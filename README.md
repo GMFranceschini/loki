@@ -11,6 +11,9 @@ the week and the month.
 Everything runs on your machine. No account, no API key, no data leaves the
 Mac except the queries sent to PubMed and bioRxiv.
 
+> **This repository is AI-coded.** Loki was written by Claude Opus 5, directed
+> and reviewed by its author. Read it before you rely on it.
+
 ---
 
 ## What it does

@@ -140,6 +140,11 @@ scripts/build_app.sh --desktop    # and put a copy on the Desktop
 scripts/build_app.sh --apps       # and put a copy in /Applications
 ```
 
+Installing a copy removes the one in the project folder and registers the
+installed one with LaunchServices, so exactly one `Loki.app` exists and the
+launcher can find it. Keep both and macOS has two bundles claiming the same
+identifier, which is enough to make the app disappear from Spotlight.
+
 > **If you move the `~/Loki` folder, rerun `scripts/build_app.sh --desktop`.**
 > The launcher holds the absolute path to the project, so a moved folder leaves
 > the old app pointing nowhere. It will tell you so in a dialog rather than
@@ -484,7 +489,8 @@ third-party or emoji artwork.
 
 ```
 ~/Loki/
-├── Loki.app                  double-clickable launcher (generated)
+├── Loki.app                  double-clickable launcher (generated; removed
+│                             once you install a copy, so only one bundle exists)
 ├── assets/                   app icon artwork
 ├── assets/icon.svg           the app icon; everything else is generated from it
 ├── bin/loki                  the command you run
@@ -562,7 +568,7 @@ offline hashing embedder and the API tests run against a temporary database.
 | The app bounces and quits | Read `data/logs/app.log`. |
 | `build_app.sh` cannot replace an installed app | Trash the old one in Finder, then rerun it. |
 | The Desktop icon looks generic | Finder caches icons. Log out and back in, or rerun the build script. |
-| The app vanished from the launcher after a macOS update | A major update rebuilds the LaunchServices database and can drop an ad-hoc signed app from it. Rerun `scripts/build_app.sh --apps`, which re-registers it. |
+| The app vanished from the launcher, or Spotlight will not find it | Two causes, both handled by rerunning `scripts/build_app.sh --apps`. A major OS update rebuilds the LaunchServices database and can drop an ad-hoc signed app from it, so the build script now re-registers each installed copy. And two bundles sharing the `local.loki.app` identifier make Spotlight ambiguous about which is meant, so installing now removes the staging copy from the project folder. If a stale copy is sitting in your Trash, empty it. |
 
 ---
 

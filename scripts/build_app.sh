@@ -173,12 +173,25 @@ install_copy() {
     echo "Installed $target"
 }
 
+installed=0
 for arg in "$@"; do
     case "$arg" in
-        --desktop) install_copy "$HOME/Desktop/Loki.app" ;;
-        --apps)    install_copy "/Applications/Loki.app" ;;
+        --desktop) if install_copy "$HOME/Desktop/Loki.app"; then installed=1; fi ;;
+        --apps)    if install_copy "/Applications/Loki.app"; then installed=1; fi ;;
     esac
 done
+
+# Leave exactly one Loki.app on the system.
+#
+# Two bundles sharing a CFBundleIdentifier make LaunchServices and Spotlight
+# ambiguous about which one "local.loki.app" means, and the usual symptom is
+# that the app stops appearing in the applications launcher and in Spotlight
+# search even though it is sitting in /Applications. So once a copy has been
+# installed, this staging build is redundant: remove it.
+if [ "$installed" = 1 ]; then
+    rm -rf "$APP"
+    echo "Removed the staging copy at $APP (one bundle identifier, one app)."
+fi
 
 echo
 echo "Double-click it to start Loki and open the page."

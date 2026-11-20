@@ -17,6 +17,12 @@
     </div>
   </div>
   <div class="controls">
+    <form class="search" id="search-form" role="search">
+      <input type="search" id="search-box" placeholder="Search all stored papers"
+             autocomplete="off" maxlength="200" aria-label="Search titles and abstracts">
+      <button type="button" class="btn icon search-clear" id="search-clear"
+              hidden aria-label="Clear the search">✕</button>
+    </form>
     <label class="field">
       <span>As of</span>
       <input type="date" id="reference-date">
@@ -41,6 +47,9 @@
   <button class="tab active" data-window="day"   role="tab">Day</button>
   <button class="tab"        data-window="week"  role="tab">Week</button>
   <button class="tab"        data-window="month" role="tab">Month</button>
+  <button class="tab saved-tab" data-window="saved" role="tab">
+    Saved <span class="tab-count" id="saved-count" hidden></span>
+  </button>
 </nav>
 
 <main>
@@ -52,6 +61,11 @@
         <option value="">All sources</option>
         <option value="journal">Journals only</option>
         <option value="preprint">Preprints only</option>
+      </select>
+      <select id="search-order" hidden aria-label="Order search results">
+        <option value="score">Best score</option>
+        <option value="match">Best text match</option>
+        <option value="date">Newest first</option>
       </select>
     </div>
   </section>
@@ -94,6 +108,13 @@
           IF&nbsp;50 and IF&nbsp;90. Preprints have no impact factor and take a flat value.
           Journals missing from the table score lower still.
         </dd>
+        <dt>Saving</dt>
+        <dd>
+          The star keeps a paper. A saved paper stays in the Saved tab whatever its
+          score, and pruning never deletes it, so starring is how a paper outlives the
+          window it was found in. Search reaches every stored paper, with no relevance
+          floor and no date window.
+        </dd>
       </dl>
       <p class="caveat">
         Impact factors are hand-curated approximations, not licensed JCR data. Treat them
@@ -118,6 +139,25 @@
     </header>
 
     <div id="topics-error" class="dialog-error" hidden></div>
+
+    <section class="balance">
+      <h3>Score balance</h3>
+      <p class="balance-help">
+        Every paper's score mixes how well it matches your topics with how strong its
+        journal is. Slide towards <em>topic match</em> to follow the subject wherever it
+        is published, or towards <em>impact factor</em> to favour the bigger journals.
+        Preprints have no impact factor and take a flat value, so leaning right pushes
+        them down the list.
+      </p>
+      <div class="balance-slider">
+        <span class="balance-end">Impact factor</span>
+        <input type="range" id="weight-slider" min="0" max="100" step="1" value="70"
+               aria-label="Balance between topic match and impact factor">
+        <span class="balance-end">Topic match</span>
+      </div>
+      <p class="balance-read" id="weight-read" aria-live="polite"></p>
+    </section>
+
     <div id="topics-editor" class="topics-editor"></div>
 
     <footer class="dialog-foot">

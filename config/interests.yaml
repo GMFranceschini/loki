@@ -49,6 +49,8 @@ topics:
 scoring:
   # Final score = relevance_weight * relevance + impact_weight * impact
   # Both components are on a 0-1 scale. These two should sum to 1.0.
+  # The "Score balance" slider in the web UI writes these two lines, so
+  # editing them here and moving the slider are the same thing.
   relevance_weight: 0.7
   impact_weight: 0.3
 
@@ -138,7 +140,8 @@ sources:
 # Without pruning the database grows by roughly 0.7 GB a year.
 #
 # Pruning runs automatically after each fetch. Whatever retention_days says,
-# a paper a digest could still show is never deleted.
+# a paper a digest could still show is never deleted, and a paper you saved
+# with the star in the web UI is never deleted at all.
 storage:
   # Days of history to keep. 0 keeps everything, as Loki did before.
   retention_days: 60

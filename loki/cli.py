@@ -87,12 +87,16 @@ def cmd_prune(args) -> int:
             f"Would delete {result['papers_would_delete']} papers published "
             f"before {result['cutoff']}."
         )
+        if result.get("saved_kept"):
+            print(f"{result['saved_kept']} saved paper(s) that old would be kept.")
         return 0
 
     print(
         f"Deleted {result['papers_deleted']} papers published before "
         f"{result['cutoff']}, and {result['runs_deleted']} old run records."
     )
+    if result.get("saved_kept"):
+        print(f"Kept {result['saved_kept']} saved paper(s) older than the cutoff.")
     if result["legacy_summaries_cleared"]:
         print(f"Cleared {result['legacy_summaries_cleared']} unused summaries.")
     if result["vacuumed"]:
@@ -100,6 +104,77 @@ def cmd_prune(args) -> int:
     trimmed = trim_logs(config)
     if trimmed:
         print(f"Trimmed {trimmed} oversized log file(s).")
+    return 0
+
+
+def _print_papers(papers, show_saved: bool = False) -> None:
+    """One block per paper, as `top` has always printed them."""
+    for i, paper in enumerate(papers, 1):
+        venue = paper["journal"] or f"{paper['source']} (preprint)"
+        jif = f"IF {paper['impact_factor']:.1f}" if paper["impact_factor"] else "no IF"
+        star = " ★" if show_saved and paper.get("saved_at") else ""
+        print(f"{i:2d}. {paper['title']}{star}")
+        print(f"    {venue}  ·  {jif}  ·  {paper['published_on']}")
+        tags = paper.get("tags") or (
+            [paper["top_topic"]] if paper.get("top_topic") else []
+        )
+        score = paper["score"]
+        scored = (
+            f"score {score:.3f}  (relevance {paper['relevance']:.2f}, "
+            f"impact {paper['impact']:.2f})"
+            if score is not None
+            else "not scored yet"
+        )
+        print(f"    {scored}  · {', '.join(tags) if tags else 'no clear topic'}")
+        print(f"    {paper['url']}\n")
+
+
+def cmd_search(args) -> int:
+    with db.session() as conn:
+        papers, total = db.search_papers(
+            conn,
+            args.query,
+            limit=args.limit,
+            order=args.order,
+            saved_only=args.saved,
+        )
+        indexed = db.has_fts(conn)
+
+    if args.json:
+        print(json.dumps({"query": args.query, "total": total, "papers": papers}, indent=2))
+        return 0
+
+    header = f"{total} match{'' if total == 1 else 'es'} for {args.query!r}"
+    print(f"\n{header}\n{'=' * len(header)}")
+    if not papers:
+        print("\nNothing matched. Search covers titles and abstracts only.\n")
+        return 0
+    if total > len(papers):
+        print(f"showing the first {len(papers)}, ordered by {args.order}\n")
+    else:
+        print(f"ordered by {args.order}\n")
+    if not indexed:
+        print("(no full-text index in this SQLite build; scanned instead)\n")
+    _print_papers(papers, show_saved=True)
+    return 0
+
+
+def cmd_saved(args) -> int:
+    with db.session() as conn:
+        papers = db.saved_papers(conn, limit=args.limit)
+        total = db.count_saved(conn)
+
+    if args.json:
+        print(json.dumps({"total": total, "papers": papers}, indent=2))
+        return 0
+
+    header = f"{total} saved paper{'' if total == 1 else 's'}"
+    print(f"\n{header}\n{'=' * len(header)}")
+    if not papers:
+        print("\nNothing saved yet. Press the star on a paper in the web UI.\n")
+        return 0
+    print()
+    _print_papers(papers)
     return 0
 
 
@@ -132,21 +207,7 @@ def cmd_top(args) -> int:
         print("\nNothing stored for this window yet. Run:  loki fetch --backfill 7\n")
         return 0
     print(f"{result['considered']} papers considered\n")
-
-    for i, paper in enumerate(result["papers"], 1):
-        venue = paper["journal"] or f"{paper['source']} (preprint)"
-        jif = f"IF {paper['impact_factor']:.1f}" if paper["impact_factor"] else "no IF"
-        print(f"{i:2d}. {paper['title']}")
-        print(f"    {venue}  ·  {jif}  ·  {paper['published_on']}")
-        tags = paper.get("tags") or (
-            [paper["top_topic"]] if paper.get("top_topic") else []
-        )
-        print(
-            f"    score {paper['score']:.3f}  "
-            f"(relevance {paper['relevance']:.2f}, impact {paper['impact']:.2f})  "
-            f"· {', '.join(tags) if tags else 'no clear topic'}"
-        )
-        print(f"    {paper['url']}\n")
+    _print_papers(result["papers"], show_saved=True)
     return 0
 
 
@@ -293,6 +354,12 @@ def cmd_doctor(args) -> int:
         print(f"  papers      {info['total_papers']}")
         print(f"  by source   {info['by_source'] or 'none yet'}")
         print(f"  span        {info['earliest'] or '-'} to {info['latest'] or '-'}")
+        print(f"  saved       {info['saved_papers']}")
+        print(
+            "  search      "
+            + ("full-text index ready" if db.has_fts(conn)
+               else "no FTS5 in this SQLite build; search will scan")
+        )
         background = db.get_meta(conn, "background_vector")
         count = db.get_meta(conn, "background_count", "0")
         print(f"  background  {'set' if background else 'not set'} (from {count} papers)")
@@ -353,6 +420,28 @@ def build_parser() -> argparse.ArgumentParser:
     p_top.add_argument("--date", type=_parse_day, metavar="YYYY-MM-DD")
     p_top.add_argument("--json", action="store_true")
     p_top.set_defaults(func=cmd_top)
+
+    p_search = sub.add_parser(
+        "search", help="full-text search over every stored title and abstract"
+    )
+    p_search.add_argument("query", help="words to look for; quote a phrase")
+    p_search.add_argument("--limit", type=int, default=25)
+    p_search.add_argument(
+        "--order",
+        default="score",
+        choices=db.SEARCH_ORDERS,
+        help="score (default), match for best text match, or date",
+    )
+    p_search.add_argument(
+        "--saved", action="store_true", help="only search saved papers"
+    )
+    p_search.add_argument("--json", action="store_true")
+    p_search.set_defaults(func=cmd_search)
+
+    p_saved = sub.add_parser("saved", help="list saved papers, newest save first")
+    p_saved.add_argument("--limit", type=int, default=100)
+    p_saved.add_argument("--json", action="store_true")
+    p_saved.set_defaults(func=cmd_saved)
 
     p_serve = sub.add_parser("serve", help="run the web server")
     p_serve.add_argument("--host", default="127.0.0.1")

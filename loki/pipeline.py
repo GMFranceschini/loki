@@ -282,7 +282,8 @@ def prune(
     database grew without limit while only the last few weeks were reachable.
 
     `older_than` overrides the configured retention. Either way the cutoff is
-    clamped so a paper a digest could still show is never deleted.
+    clamped so a paper a digest could still show is never deleted, and a saved
+    paper is kept however old it is.
     """
     config = config or load_config()
     requested = config.storage.retention_days if older_than is None else older_than
@@ -297,6 +298,7 @@ def prune(
 
     with db.session() as conn:
         doomed = db.count_before(conn, cutoff)
+        spared = db.count_saved_before(conn, cutoff)
         if dry_run:
             return {
                 "status": "dry-run",
@@ -304,6 +306,7 @@ def prune(
                 "retention_days": retention,
                 "clamped_to_window_reach": clamped,
                 "papers_would_delete": doomed,
+                "saved_kept": spared,
             }
         papers = db.delete_before(conn, cutoff)
         runs = db.trim_runs(conn, config.storage.keep_runs)
@@ -325,6 +328,7 @@ def prune(
         "retention_days": retention,
         "clamped_to_window_reach": clamped,
         "papers_deleted": papers,
+        "saved_kept": spared,
         "runs_deleted": runs,
         "legacy_summaries_cleared": legacy,
         "vacuumed": bool(reclaimed and config.storage.vacuum),

@@ -168,3 +168,31 @@ def test_a_small_log_is_left_alone(tmp_path, monkeypatch):
     )
     assert trim_logs(cfg) == 0
     assert small.read_text() == "one line\n"
+
+
+# ---------------------------------------------------------------- saved papers
+
+
+def test_pruning_keeps_a_saved_paper(store):
+    """Saving a paper is how it outlives the window it was found in."""
+    seed([400, 500])
+    with db.session() as conn:
+        kept = conn.execute("SELECT id FROM papers ORDER BY id").fetchone()["id"]
+        db.set_saved(conn, kept, True)
+
+    result = prune(config(retention=60))
+    assert result["papers_deleted"] == 1
+    assert result["saved_kept"] == 1
+    with db.session() as conn:
+        assert db.count_saved(conn) == 1
+        assert db.stats(conn)["total_papers"] == 1
+
+
+def test_a_dry_run_says_what_it_would_spare(store):
+    seed([400])
+    with db.session() as conn:
+        db.set_saved(conn, conn.execute("SELECT id FROM papers").fetchone()["id"], True)
+
+    result = prune(config(retention=60), dry_run=True)
+    assert result["papers_would_delete"] == 0
+    assert result["saved_kept"] == 1

@@ -343,8 +343,59 @@ def validate_topic_payload(items: Any) -> list[dict[str, Any]]:
     return cleaned
 
 
-def save_topics(items: list[dict[str, Any]], path=None) -> list[dict[str, Any]]:
+def validate_weights(raw: Any) -> dict[str, float] | None:
+    """Check the relevance/impact balance submitted from the UI.
+
+    Returns None when the payload carries no weights, which means "leave the
+    file alone". Otherwise returns both weights, normalised to sum to 1.
+    """
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ConfigError("The scoring weights are malformed.")
+
+    present = {k: raw[k] for k in ("relevance_weight", "impact_weight") if k in raw}
+    if not present:
+        return None
+
+    values: dict[str, float] = {}
+    for key in ("relevance_weight", "impact_weight"):
+        if key not in raw:
+            raise ConfigError(
+                "Set both relevance_weight and impact_weight, or neither: "
+                "they are two halves of one balance."
+            )
+        try:
+            value = float(raw[key])
+        except (TypeError, ValueError):
+            raise ConfigError(f"{key} must be a number.") from None
+        if value < 0:
+            raise ConfigError(f"{key} cannot be negative.")
+        values[key] = value
+
+    total = values["relevance_weight"] + values["impact_weight"]
+    if total <= 0:
+        raise ConfigError(
+            "At least one of relevance and impact must carry some weight, "
+            "or every paper would score zero."
+        )
+    # Stored normalised so the file states the balance plainly. The scorer
+    # divides by the total anyway, so this changes no score.
+    return {
+        "relevance_weight": round(values["relevance_weight"] / total, 3),
+        "impact_weight": round(values["impact_weight"] / total, 3),
+    }
+
+
+def save_topics(
+    items: list[dict[str, Any]], path=None, weights: Any = None
+) -> list[dict[str, Any]]:
     """Write topics back to interests.yaml, keeping comments and other settings.
+
+    `weights` optionally carries relevance_weight and impact_weight, which are
+    written into the scoring block. They are saved alongside the topics
+    because both are edited in the same dialog, and both invalidate every
+    stored score, so one save and one rescore covers them.
 
     The file is written to a temporary file and then moved into place, so an
     interrupted write cannot leave a half-written config behind. The previous
@@ -355,6 +406,7 @@ def save_topics(items: list[dict[str, Any]], path=None) -> list[dict[str, Any]]:
 
     path = path or INTERESTS_FILE
     cleaned = validate_topic_payload(items)
+    balance = validate_weights(weights)
 
     yaml_rt = YAML()
     yaml_rt.preserve_quotes = True
@@ -380,6 +432,16 @@ def save_topics(items: list[dict[str, Any]], path=None) -> list[dict[str, Any]]:
         }
         for topic in cleaned
     ]
+
+    if balance:
+        scoring = document.get("scoring")
+        if not isinstance(scoring, dict):
+            scoring = {}
+            document["scoring"] = scoring
+        # Assigning into the loaded mapping leaves the surrounding comments,
+        # which is the point of the round-trip loader.
+        scoring["relevance_weight"] = balance["relevance_weight"]
+        scoring["impact_weight"] = balance["impact_weight"]
 
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix(path.suffix + ".tmp")

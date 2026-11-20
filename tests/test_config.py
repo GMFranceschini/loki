@@ -231,3 +231,77 @@ def test_scoring_reports_padding_per_window():
     assert scoring.padding_by_window == {"day": 5, "week": 10, "month": 10}
     assert scoring.padding_for("day") == 5
     assert scoring.padding_for("month") == 10
+
+
+# ---------------------------------------------------------------- weights
+
+
+def test_weights_are_stored_normalised():
+    from loki.config import validate_weights
+
+    assert validate_weights({"relevance_weight": 55, "impact_weight": 45}) == {
+        "relevance_weight": 0.55, "impact_weight": 0.45
+    }
+
+
+def test_no_weights_means_leave_them_alone():
+    from loki.config import validate_weights
+
+    assert validate_weights(None) is None
+    assert validate_weights({}) is None
+
+
+def test_weights_must_come_as_a_pair():
+    from loki.config import ConfigError, validate_weights
+
+    with pytest.raises(ConfigError, match="both"):
+        validate_weights({"relevance_weight": 1.0})
+
+
+def test_weights_cannot_both_be_zero():
+    from loki.config import ConfigError, validate_weights
+
+    with pytest.raises(ConfigError, match="some weight"):
+        validate_weights({"relevance_weight": 0, "impact_weight": 0})
+
+
+def test_weights_reject_the_negative_and_the_unreadable():
+    from loki.config import ConfigError, validate_weights
+
+    with pytest.raises(ConfigError, match="negative"):
+        validate_weights({"relevance_weight": -1, "impact_weight": 2})
+    with pytest.raises(ConfigError, match="must be a number"):
+        validate_weights({"relevance_weight": "lots", "impact_weight": 1})
+
+
+def test_one_side_may_carry_everything():
+    """Ranking by topic match alone is a legitimate choice."""
+    from loki.config import validate_weights
+
+    assert validate_weights({"relevance_weight": 1, "impact_weight": 0}) == {
+        "relevance_weight": 1.0, "impact_weight": 0.0
+    }
+
+
+def test_saving_weights_keeps_the_comments_and_the_rest(tmp_path):
+    import shutil
+    from pathlib import Path
+
+    from loki.config import load_config, save_topics
+
+    path = tmp_path / "interests.yaml"
+    shutil.copy2(Path("config/interests.yaml"), path)
+    before = load_config(path)
+    topics = [
+        {"name": t.name, "weight": t.weight, "prose": t.prose, "pubmed": t.pubmed}
+        for t in before.topics
+    ]
+
+    save_topics(topics, path, weights={"relevance_weight": 0.4, "impact_weight": 0.6})
+
+    after = load_config(path)
+    assert (after.scoring.relevance_weight, after.scoring.impact_weight) == (0.4, 0.6)
+    # Everything else in the file survives, comments included.
+    assert after.scoring.padding_by_window == before.scoring.padding_by_window
+    assert after.storage.retention_days == before.storage.retention_days
+    assert "# Final score = relevance_weight" in path.read_text()

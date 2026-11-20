@@ -7,18 +7,6 @@ the week and the month.
 Everything runs on your machine. No account, no API key, no data leaves the
 Mac except the queries sent to PubMed and bioRxiv.
 
-New here? Go to [Install](#install).
-
-Once it is set up, **double-click `Loki.app`**. It starts the server, opens the
-page, and exits. The server keeps running in the background; stop it with
-`bin/loki stop`.
-
-Or from a terminal:
-
-```
-bin/loki serve      # then open http://127.0.0.1:8713
-```
-
 ---
 
 ## What it does
@@ -28,6 +16,95 @@ bin/loki serve      # then open http://127.0.0.1:8713
 3. **Ranks** them into three digests: day, week and month, each reaching a
    few days further back so nothing is missed at the edge.
 4. **Serves** them at `http://127.0.0.1:8713`, where you can also edit your topics.
+
+---
+
+## Quickstart
+
+Four steps. Everything else in this file is detail you can come back for.
+
+### 1. Install
+
+Needs **Python 3.12** and, for the app and the daily schedule, **macOS**. About
+150 MB of disk.
+
+```bash
+git clone https://github.com/GMFranceschini/loki.git
+cd loki
+scripts/install.sh
+```
+
+> Keep the folder out of `~/Desktop`, `~/Documents` and `~/Downloads`. macOS
+> blocks background jobs from reading those, and the daily fetch then fails.
+> `~/Loki` is a good home.
+
+### 2. Fill the database
+
+It starts empty, so there is nothing to rank until you fetch.
+
+```bash
+bin/loki fetch --backfill 7
+```
+
+### 3. Set your topics
+
+**This is the step that decides whether Loki is useful to you.** The five
+topics in `config/interests.yaml` are an example, not a default worth keeping.
+
+```bash
+bin/loki serve      # then open http://127.0.0.1:8713 and press Topics
+```
+
+Describe each topic in a sentence or two of plain prose, the way you would to a
+colleague — that text is what abstracts are matched against, and rich wording
+beats keywords. Press **Save & rescore**. If you edit the file by hand instead,
+run `bin/loki rescore` afterwards.
+
+Full guidance: [Setting your topics](#setting-your-topics).
+
+### 4. Keep it current
+
+```bash
+scripts/install_schedule.sh       # fetch every day at 07:00
+scripts/build_app.sh --desktop    # a double-clickable Loki.app
+```
+
+Then **double-click `Loki.app`** whenever you want to read: it starts the
+server, opens the page and exits, leaving the server running in the background.
+
+### Day to day
+
+The page has three digest tabs — **Day**, **Week**, **Month** — plus a
+**Saved** tab, a search box over everything stored, and the **Topics** editor.
+Press **☆ Save** on a paper to keep it: a saved paper is never pruned.
+
+```bash
+bin/loki serve                    # the web UI
+bin/loki top week --limit 20      # or read it in the terminal
+bin/loki search "loop extrusion"  # search every stored paper
+bin/loki saved                    # the ones you starred
+bin/loki status                   # is the server running?
+bin/loki stop                     # stop it
+bin/loki doctor                   # health check
+```
+
+---
+
+# Full documentation
+
+- [Install](#install) — requirements, the installer, doing it by hand
+- [The app](#the-app) — `Loki.app`, rebuilding it, why it exits straight away
+- [Daily use](#daily-use) — every command, and the `launchd` schedule
+- [Setting your topics](#setting-your-topics) — how to write prose that matches
+- [How ranking works](#how-ranking-works) — relevance, tags, impact, windows
+- [Saving and searching](#saving-and-searching) — the star and the search box
+- [Keeping the database small](#keeping-the-database-small) — retention and pruning
+- [Tuning it](#tuning-it) — symptom-to-setting table
+- [Privacy and network access](#privacy-and-network-access) — what leaves the Mac
+- [Where the data comes from](#where-the-data-comes-from) — sources and terms
+- [Layout](#layout) · [API](#api) · [Tests](#tests) ·
+  [Troubleshooting](#troubleshooting) · [Adding more sources](#adding-more-sources) ·
+  [Licence](#licence)
 
 ---
 
@@ -161,6 +238,9 @@ bin/loki top week --limit 20    # top 20 for the last 7 days
 bin/loki top month --json       # machine-readable
 bin/loki fetch                  # fetch now (the schedule does this for you)
 bin/loki fetch --backfill 14    # fill in the last two weeks
+bin/loki search "loop extrusion"  # full-text search over everything stored
+bin/loki search cohesin --order date --limit 5
+bin/loki saved                  # the papers you starred
 bin/loki status                 # is the server running?
 bin/loki stop                   # stop the server
 bin/loki prune                  # drop history older than the digests reach
@@ -268,7 +348,15 @@ Each paper gets a score from 0 to 1:
 score = 0.7 × relevance  +  0.3 × impact
 ```
 
-Both weights live under `scoring:` in `config/interests.yaml`.
+Both weights live under `scoring:` in `config/interests.yaml`, and the
+**Topics** dialog has a **Score balance** slider for them: drag towards *topic
+match* to follow the subject wherever it is published, or towards *impact
+factor* to favour the bigger journals. The two always sum to 1, so the slider
+sets one number, not two that could disagree. Moving it rescores every stored
+paper, because a score only means something against one balance.
+
+Preprints have no impact factor and take a flat value, so leaning towards
+impact pushes them down the list.
 
 ### Relevance
 
@@ -382,6 +470,55 @@ preprint record is removed so the digest shows one entry, not two.
 
 ---
 
+## Saving and searching
+
+The three digest tabs answer *what should I read now*. These two answer
+*what do I have*.
+
+### Save a paper
+
+Press **☆ Save** on any paper. It then appears in the **Saved** tab, newest
+first, and the tab shows a count.
+
+A saved paper is kept on two counts that matter:
+
+- **Pruning never deletes it.** Saving is therefore how a paper outlives the
+  window it was found in. Everything else older than the retention cutoff goes.
+- **It is listed whatever its score.** No relevance floor and no date window
+  apply to the Saved tab. It is there because you put it there.
+
+A later fetch that re-reads the same paper updates its metadata and leaves the
+star alone.
+
+```bash
+bin/loki saved                  # list them, newest save first
+bin/loki saved --json           # machine-readable
+```
+
+### Search everything stored
+
+The search box in the top bar covers the **title and abstract of every stored
+paper** — the whole database, not the current window, with no relevance floor.
+A paper too far down to reach a digest is still findable here.
+
+- **A word fragment matches what it starts.** `methylat` finds methylation,
+  methylated and methylate.
+- **More words narrow the result.** They are ANDed.
+- **Quote a phrase** to keep it together: `"loop extrusion"`.
+- Order the results by score, by best text match, or by date.
+
+```bash
+bin/loki search "loop extrusion"
+bin/loki search cohesin --order match --limit 5
+bin/loki search methylation --saved     # only among your saved papers
+```
+
+The index is SQLite FTS5, stored beside the papers. It holds no second copy of
+the abstracts — it indexes the table in place — and it is built once, the first
+time a database that predates it is opened.
+
+---
+
 ## Keeping the database small
 
 Loki stores roughly **430 new papers a day**, about 1.8 MB. A digest only ever
@@ -415,6 +552,9 @@ limit.
 > and Loki says so. The headroom above that — 21 days by default — is what
 > lets you set the **As of** date back a few weeks and still see full lists.
 
+> **Saved papers are never pruned**, however old they get. If you want to keep
+> a paper, press the star; see [Saving and searching](#saving-and-searching).
+
 Run it yourself at any time:
 
 ```bash
@@ -436,8 +576,8 @@ Everything below is in `config/interests.yaml`.
 | Symptom | What to change |
 |---|---|
 | Too many loosely related papers | Raise `sim_floor` (0.10 → 0.15) or `min_relevance`. |
-| Famous journals crowd out the rest | Lower `impact_weight` (0.3 → 0.2). |
-| Too few high-profile papers | Raise `impact_weight`, or raise `impact_factor_cap`. |
+| Famous journals crowd out the rest | Slide **Score balance** towards topic match, in **Topics**. |
+| Too few high-profile papers | Slide **Score balance** towards impact factor, or raise `impact_factor_cap`. |
 | Preprints dominate | Lower `preprint_impact` (0.33 → 0.20). |
 | You want preprints first | Raise `preprint_impact` (0.33 → 0.50). |
 | One topic swamps the others | Lower its `weight`. |
@@ -545,7 +685,7 @@ third-party or emoji artwork.
 │   ├── build_app.sh          builds Loki.app
 │   ├── make_icon.sh          rebuilds icon.png and loki.icns from icon.svg
 │   └── svg2png.swift         the fallback SVG rasteriser make_icon.sh uses
-└── tests/                    147 tests: bin/loki is not needed, use pytest
+└── tests/                    198 tests: bin/loki is not needed, use pytest
 ```
 
 Your data is just a SQLite file. Query it directly whenever you want:
@@ -563,7 +703,9 @@ sqlite3 data/loki.db \
 |---|---|
 | `GET /api/digests?date=&limit=` | All three windows in one call |
 | `GET /api/digest?window=day\|week\|month` | One window |
-| `GET /api/topics` · `PUT /api/topics` | Read and save the topic profile |
+| `GET /api/topics` · `PUT /api/topics` | Read and save the topic profile and the score balance |
+| `GET /api/search?q=&order=&limit=&offset=` | Full-text search; `order` is `score`, `match` or `date` |
+| `GET /api/saved` · `POST /api/papers/{id}/save` | List saved papers, star or unstar one |
 | `POST /api/fetch?backfill=2` | Run a fetch |
 | `GET /api/stats` · `GET /api/coverage?days=30` | Storage and per-day counts |
 | `GET /api/docs` | Interactive API documentation |
@@ -576,7 +718,7 @@ sqlite3 data/loki.db \
 .venv/bin/python -m pytest tests/ -q
 ```
 
-147 tests, no network needed: the scoring and tagging tests use the offline
+198 tests, no network needed: the scoring and tagging tests use the offline
 hashing embedder and the API tests run against a temporary database.
 
 ---

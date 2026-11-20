@@ -159,16 +159,21 @@ def read_topics() -> dict[str, Any]:
             }
             for t in cfg.topics
         ],
+        "weights": {
+            "relevance_weight": cfg.scoring.relevance_weight,
+            "impact_weight": cfg.scoring.impact_weight,
+        },
         "path": str(INTERESTS_FILE),
     }
 
 
 @app.put("/api/topics")
 async def write_topics(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
-    """Save the topic profile, then rescore every stored paper.
+    """Save the topic profile and scoring balance, then rescore every paper.
 
-    Changing topics changes what relevance means, so stored scores would
-    otherwise be measured against a profile that no longer exists.
+    Changing topics changes what relevance means, and changing the balance
+    changes what a score means, so stored scores would otherwise be measured
+    against a profile that no longer exists.
     """
     if _fetch_lock.locked():
         raise HTTPException(
@@ -177,7 +182,7 @@ async def write_topics(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
         )
 
     try:
-        saved = save_topics(payload.get("topics"))
+        saved = save_topics(payload.get("topics"), weights=payload.get("weights"))
     except ConfigError as exc:
         # The message is written for the person editing, so pass it through.
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -206,6 +211,86 @@ async def write_topics(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
             f"Saved {len(saved)} topics and rescored {rescored} stored papers. "
             "Run a fetch to pull in papers matching any new topic."
         ),
+    }
+
+
+# ------------------------------------------------------------------ saved
+
+
+@app.get("/api/saved")
+def read_saved(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+) -> dict[str, Any]:
+    """Starred papers, newest save first.
+
+    No window and no relevance floor: a saved paper is listed because it was
+    saved, not because it still ranks.
+    """
+    with db.session() as conn:
+        papers = db.saved_papers(conn, limit, offset)
+        return {
+            "count": len(papers),
+            "total": db.count_saved(conn),
+            "limit": limit,
+            "offset": offset,
+            "papers": papers,
+        }
+
+
+@app.post("/api/papers/{paper_id}/save")
+def write_saved(paper_id: int, payload: dict[str, Any] = Body(default={})) -> dict[str, Any]:
+    """Star or unstar one paper. Body: {"saved": true | false}."""
+    saved = bool(payload.get("saved", True))
+    with db.session() as conn:
+        paper = db.set_saved(conn, paper_id, saved)
+    if paper is None:
+        raise HTTPException(status_code=404, detail=f"No paper with id {paper_id}")
+    return {"status": "ok", "paper": paper}
+
+
+# ------------------------------------------------------------------ search
+
+
+@app.get("/api/search")
+def search(
+    q: str = Query("", max_length=200),
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    order: str = Query("score", pattern="^(score|match|date)$"),
+    source: str = Query("", pattern="^(|journal|preprint)$"),
+    saved_only: bool = Query(False),
+) -> dict[str, Any]:
+    """Full-text search over every stored paper's title and abstract.
+
+    Search reaches the whole database, not the digest windows, and applies no
+    relevance floor. The windows answer "what should I read now"; this answers
+    "what do I have".
+    """
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="Type something to search for.")
+
+    sources: list[str] | None = None
+    if source == "preprint":
+        sources = ["biorxiv", "medrxiv"]
+    elif source == "journal":
+        sources = ["pubmed"]
+
+    with db.session() as conn:
+        papers, total = db.search_papers(
+            conn, q, limit=limit, offset=offset, order=order,
+            sources=sources, saved_only=saved_only,
+        )
+        indexed = db.has_fts(conn)
+    return {
+        "query": q,
+        "order": order,
+        "limit": limit,
+        "offset": offset,
+        "count": len(papers),
+        "total": total,
+        "indexed": indexed,
+        "papers": papers,
     }
 
 
@@ -324,12 +409,33 @@ def fetch_log() -> dict[str, Any]:
 
 # ------------------------------------------------------------------ web UI
 
+# The UI is edited in place and reloaded, so a stale copy is worse than a
+# second request. Without a Cache-Control header a browser is free to guess
+# how long a file stays fresh, and it guesses from how long the file had gone
+# unchanged — which for a file untouched for weeks can be hours. An edit then
+# does not show up on reload, and the page looks broken rather than cached.
+#
+# "no-cache" does not mean do not store: the copy is kept and revalidated,
+# so an unchanged file costs one 304 and no body. On a loopback server that
+# is free.
+NO_CACHE = "no-cache"
+
+
+class RevalidatingStatics(StaticFiles):
+    def file_response(self, *args: Any, **kwargs: Any):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = NO_CACHE
+        return response
+
+
 if WEB_DIR.exists():
     @app.get("/")
     def index() -> FileResponse:
-        return FileResponse(WEB_DIR / "index.html")
+        return FileResponse(
+            WEB_DIR / "index.html", headers={"Cache-Control": NO_CACHE}
+        )
 
-    app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
+    app.mount("/static", RevalidatingStatics(directory=WEB_DIR), name="static")
 else:  # pragma: no cover
     @app.get("/")
     def index_missing() -> dict[str, str]:

@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from typing import Any, Iterable, Iterator
 
 from .paths import DB_FILE, ensure_dirs
+
+log = logging.getLogger(__name__)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS papers (
@@ -39,6 +43,10 @@ CREATE TABLE IF NOT EXISTS papers (
     tags          TEXT,                   -- JSON array of topic names
     topic_scores  TEXT,                   -- JSON {topic: sim}
     scored_with   TEXT,                   -- config fingerprint
+    saved_at      TEXT,                   -- ISO-8601 UTC when starred, else
+                                          -- NULL. A saved paper is kept out
+                                          -- of the digest windows' reach and
+                                          -- is never pruned.
     UNIQUE (source, ext_id)
 );
 
@@ -70,8 +78,64 @@ CREATE TABLE IF NOT EXISTS meta (
 PAPER_COLUMNS = (
     "id, source, ext_id, doi, title, abstract, journal, journal_abbrev, issn, "
     "authors, url, is_preprint, published_on, pub_date, first_seen_at, "
-    "relevance, impact, impact_factor, score, top_topic, tags, topic_scores"
+    "relevance, impact, impact_factor, score, top_topic, tags, topic_scores, "
+    "saved_at"
 )
+
+# Columns added after the first release. A database created by an earlier
+# version has the table already, so CREATE TABLE IF NOT EXISTS skips it and
+# the new column never appears. Each is added on open instead.
+ADDED_COLUMNS = (("saved_at", "TEXT"),)
+
+# Indexes on those columns, which therefore cannot be part of SCHEMA: it runs
+# before the columns are added, and indexing one that is not there yet fails.
+POST_SCHEMA = """
+CREATE INDEX IF NOT EXISTS idx_papers_saved ON papers (saved_at);
+"""
+
+# Full-text search over title and abstract. This is an external-content table:
+# it stores only the index and reads the text from `papers`, so the abstracts
+# are not duplicated on disk. Triggers keep it in step.
+#
+# The tokenizer does not stem. Stemming and the prefix search a search box
+# needs pull against each other: porter indexes "methylation" under the stem
+# "methyl", so a prefix query for "methylat" matches nothing. Raw tokens plus
+# a prefix term cover the same ground more predictably, because "methylat"
+# then finds methylation, methylated and methylate alike.
+#
+# The update trigger names its columns (AFTER UPDATE OF title, abstract).
+# Without that it would fire on every score write, and a rescore touches every
+# row, so each rescore would needlessly rebuild the whole index.
+# Raise this whenever FTS_SCHEMA changes in a way that makes the stored index
+# wrong, for instance a different tokenizer. The next open rebuilds.
+FTS_VERSION = "1-unicode61-prefix345"
+META_FTS_VERSION = "fts_version"
+
+FTS_SCHEMA = """
+CREATE VIRTUAL TABLE IF NOT EXISTS papers_fts USING fts5 (
+    title, abstract, content='papers', content_rowid='id',
+    tokenize='unicode61 remove_diacritics 2',
+    prefix='3 4 5'
+);
+
+CREATE TRIGGER IF NOT EXISTS papers_fts_insert AFTER INSERT ON papers BEGIN
+    INSERT INTO papers_fts (rowid, title, abstract)
+    VALUES (new.id, new.title, new.abstract);
+END;
+
+CREATE TRIGGER IF NOT EXISTS papers_fts_delete AFTER DELETE ON papers BEGIN
+    INSERT INTO papers_fts (papers_fts, rowid, title, abstract)
+    VALUES ('delete', old.id, old.title, old.abstract);
+END;
+
+CREATE TRIGGER IF NOT EXISTS papers_fts_update
+AFTER UPDATE OF title, abstract ON papers BEGIN
+    INSERT INTO papers_fts (papers_fts, rowid, title, abstract)
+    VALUES ('delete', old.id, old.title, old.abstract);
+    INSERT INTO papers_fts (rowid, title, abstract)
+    VALUES (new.id, new.title, new.abstract);
+END;
+"""
 
 
 def utcnow() -> str:
@@ -90,7 +154,57 @@ def connect(path=None) -> sqlite3.Connection:
 
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    _add_missing_columns(conn)
+    conn.executescript(POST_SCHEMA)
+    _init_fts(conn)
     conn.commit()
+
+
+def _add_missing_columns(conn: sqlite3.Connection) -> None:
+    """Bring an older database up to the current column list."""
+    have = {row["name"] for row in conn.execute("PRAGMA table_info(papers)")}
+    for name, decl in ADDED_COLUMNS:
+        if name not in have:
+            conn.execute(f"ALTER TABLE papers ADD COLUMN {name} {decl}")
+            log.info("Added the %s column to papers", name)
+
+
+def has_fts(conn: sqlite3.Connection) -> bool:
+    """Whether the full-text index exists and can be queried."""
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'papers_fts'"
+    ).fetchone()
+    return bool(row)
+
+
+def _init_fts(conn: sqlite3.Connection) -> None:
+    """Create the search index, and build it when it is new or out of date.
+
+    FTS5 is compiled into every SQLite that Python ships on macOS and Linux,
+    but it is an optional module. If it is missing, search falls back to a
+    LIKE scan rather than the whole app failing to open the database.
+
+    The build is driven by a recorded version rather than by inspecting the
+    index. On an external-content table SELECT COUNT(*) reads the content
+    table, so it reports every stored paper whether the index holds anything
+    or not, and cannot tell a filled index from an empty one. The version also
+    gives any later change to the tokenizer a way to force the rebuild it
+    needs: raise FTS_VERSION and the next open re-indexes.
+    """
+    try:
+        conn.executescript(FTS_SCHEMA)
+    except sqlite3.OperationalError as exc:
+        log.warning("No full-text index (%s); search will scan instead", exc)
+        return
+
+    if get_meta(conn, META_FTS_VERSION) == FTS_VERSION:
+        return
+    stored = conn.execute("SELECT COUNT(*) AS n FROM papers").fetchone()["n"]
+    if stored:
+        # 'rebuild' discards the index and reads the content table back in.
+        conn.execute("INSERT INTO papers_fts (papers_fts) VALUES ('rebuild')")
+        log.info("Built the full-text index over %d stored papers", stored)
+    set_meta(conn, META_FTS_VERSION, FTS_VERSION)
 
 
 @contextmanager
@@ -275,16 +389,186 @@ def apply_scores(conn: sqlite3.Connection, scored: Iterable[dict[str, Any]]) -> 
 
 
 def delete_before(conn: sqlite3.Connection, cutoff: date) -> int:
-    """Remove papers published before `cutoff`. Returns the number deleted."""
-    cur = conn.execute("DELETE FROM papers WHERE published_on < ?", (cutoff.isoformat(),))
+    """Remove papers published before `cutoff`. Returns the number deleted.
+
+    A saved paper is never deleted. Saving one is a statement that it matters
+    beyond the window it was found in, which is exactly the thing retention
+    would otherwise take away.
+    """
+    cur = conn.execute(
+        "DELETE FROM papers WHERE published_on < ? AND saved_at IS NULL",
+        (cutoff.isoformat(),),
+    )
     return cur.rowcount or 0
 
 
 def count_before(conn: sqlite3.Connection, cutoff: date) -> int:
+    """Papers a prune at `cutoff` would delete. Excludes saved ones."""
     row = conn.execute(
-        "SELECT COUNT(*) AS n FROM papers WHERE published_on < ?", (cutoff.isoformat(),)
+        "SELECT COUNT(*) AS n FROM papers WHERE published_on < ? AND saved_at IS NULL",
+        (cutoff.isoformat(),),
     ).fetchone()
     return int(row["n"])
+
+
+def count_saved_before(conn: sqlite3.Connection, cutoff: date) -> int:
+    """Saved papers older than `cutoff`, which pruning keeps regardless."""
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM papers WHERE published_on < ? AND saved_at IS NOT NULL",
+        (cutoff.isoformat(),),
+    ).fetchone()
+    return int(row["n"])
+
+
+# ---------------------------------------------------------------- saved
+
+
+def set_saved(conn: sqlite3.Connection, paper_id: int, saved: bool) -> dict[str, Any] | None:
+    """Star or unstar one paper. Returns the stored paper, or None if absent.
+
+    Re-saving an already saved paper keeps the original date, so the Saved
+    list does not reshuffle when a button is pressed twice.
+    """
+    if saved:
+        conn.execute(
+            "UPDATE papers SET saved_at = ? WHERE id = ? AND saved_at IS NULL",
+            (utcnow(), paper_id),
+        )
+    else:
+        conn.execute("UPDATE papers SET saved_at = NULL WHERE id = ?", (paper_id,))
+    row = conn.execute(
+        f"SELECT {PAPER_COLUMNS} FROM papers WHERE id = ?", (paper_id,)
+    ).fetchone()
+    return _row_to_paper(row) if row else None
+
+
+def saved_papers(
+    conn: sqlite3.Connection, limit: int = 100, offset: int = 0
+) -> list[dict[str, Any]]:
+    """Saved papers, most recently saved first.
+
+    No relevance floor and no date window: a saved paper is shown because it
+    was saved, not because it still scores well or falls in a digest.
+    """
+    return [
+        _row_to_paper(r)
+        for r in conn.execute(
+            f"SELECT {PAPER_COLUMNS} FROM papers WHERE saved_at IS NOT NULL "
+            "ORDER BY saved_at DESC, id DESC LIMIT ? OFFSET ?",
+            (limit, offset),
+        )
+    ]
+
+
+def count_saved(conn: sqlite3.Connection) -> int:
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM papers WHERE saved_at IS NOT NULL"
+    ).fetchone()
+    return int(row["n"])
+
+
+# ---------------------------------------------------------------- search
+
+# FTS5 MATCH takes a query language of its own, where a bare hyphen, quote or
+# asterisk from a search box is either a syntax error or a silent change of
+# meaning. Rather than pass the text through, it is rebuilt from its parts.
+_PHRASE = re.compile(r'"([^"]*)"')
+_WORD = re.compile(r"[^\W_]+(?:[-'][^\W_]+)*", re.UNICODE)
+
+SEARCH_ORDERS = ("score", "match", "date")
+
+
+def fts_query(raw: str) -> str:
+    """Turn a search box string into a safe FTS5 MATCH expression.
+
+    Quoted runs stay phrases. Every other word becomes a prefix term, so
+    "methylat" finds methylation, and the terms are ANDed: more words mean
+    fewer, better results, which is how a search box is expected to behave.
+    Returns "" when nothing searchable is left.
+    """
+    parts: list[str] = []
+
+    def phrase(text: str) -> None:
+        words = _WORD.findall(text)
+        if words:
+            parts.append('"' + " ".join(words) + '"')
+
+    for chunk in _PHRASE.findall(raw or ""):
+        phrase(chunk)
+    for word in _WORD.findall(_PHRASE.sub(" ", raw or "")):
+        parts.append('"' + word + '"*')
+    return " AND ".join(parts)
+
+
+def search_papers(
+    conn: sqlite3.Connection,
+    query: str,
+    limit: int = 25,
+    offset: int = 0,
+    order: str = "score",
+    sources: list[str] | None = None,
+    saved_only: bool = False,
+) -> tuple[list[dict[str, Any]], int]:
+    """Papers whose title or abstract match `query`. Returns (papers, total).
+
+    Searching deliberately ignores the relevance floor and the digest windows.
+    The ranked lists answer "what should I read now"; search answers "what do
+    I have", and hiding stored papers from it would make it a liar.
+    """
+    if order not in SEARCH_ORDERS:
+        raise ValueError(f"Unknown order {order!r}; use one of {', '.join(SEARCH_ORDERS)}")
+
+    where = ["1 = 1"]
+    params: list[Any] = []
+    using_fts = has_fts(conn)
+    expression = fts_query(query) if using_fts else ""
+
+    if using_fts and expression:
+        source = (
+            "papers JOIN papers_fts ON papers_fts.rowid = papers.id "
+            "AND papers_fts MATCH ?"
+        )
+        params.append(expression)
+    else:
+        # No index, or nothing left after cleaning: scan instead. Slower, but
+        # it keeps search working on a SQLite built without FTS5.
+        source = "papers"
+        terms = _WORD.findall(query or "")
+        if not terms:
+            return [], 0
+        for term in terms[:8]:
+            where.append("(papers.title LIKE ? OR papers.abstract LIKE ?)")
+            params.extend([f"%{term}%", f"%{term}%"])
+
+    if saved_only:
+        where.append("papers.saved_at IS NOT NULL")
+    if sources:
+        where.append(f"(papers.source IN ({','.join('?' * len(sources))}))")
+        params.extend(sources)
+
+    clause = " AND ".join(where)
+    total = int(
+        conn.execute(
+            f"SELECT COUNT(*) AS n FROM {source} WHERE {clause}", params
+        ).fetchone()["n"]
+    )
+
+    ordering = {
+        "score": "papers.score IS NULL, papers.score DESC, papers.published_on DESC",
+        "date": "papers.published_on DESC, papers.score DESC",
+        "match": (
+            "bm25(papers_fts, 3.0, 1.0)" if using_fts and expression
+            else "papers.score IS NULL, papers.score DESC"
+        ),
+    }[order]
+
+    columns = ", ".join(f"papers.{c.strip()}" for c in PAPER_COLUMNS.split(","))
+    rows = conn.execute(
+        f"SELECT {columns} FROM {source} WHERE {clause} "
+        f"ORDER BY {ordering}, papers.id DESC LIMIT ? OFFSET ?",
+        [*params, limit, offset],
+    )
+    return [_row_to_paper(r) for r in rows], total
 
 
 def trim_runs(conn: sqlite3.Connection, keep: int) -> int:
@@ -336,8 +620,12 @@ def stats(conn: sqlite3.Connection) -> dict[str, Any]:
         "SELECT started_at, finished_at, status, fetched, inserted, updated, detail "
         "FROM runs ORDER BY id DESC LIMIT 1"
     ).fetchone()
+    saved = conn.execute(
+        "SELECT COUNT(*) AS n FROM papers WHERE saved_at IS NOT NULL"
+    ).fetchone()["n"]
     return {
         "total_papers": int(total),
+        "saved_papers": int(saved),
         "by_source": by_source,
         "earliest": span["lo"],
         "latest": span["hi"],

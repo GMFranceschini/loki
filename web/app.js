@@ -10,6 +10,12 @@ const state = {
   topic: "",
   source: "",
   polling: null,
+  // "window" shows a digest or the saved list; "search" shows search results.
+  view: "window",
+  saved: null,
+  savedTotal: 0,
+  search: null,
+  searchOrder: "score",
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -26,6 +32,13 @@ const el = {
   themeBtn: $("#theme-btn"),
   topicFilter: $("#topic-filter"),
   sourceFilter: $("#source-filter"),
+  searchForm: $("#search-form"),
+  searchBox: $("#search-box"),
+  searchClear: $("#search-clear"),
+  searchOrder: $("#search-order"),
+  savedCount: $("#saved-count"),
+  weightSlider: $("#weight-slider"),
+  weightRead: $("#weight-read"),
   topicsBtn: $("#topics-btn"),
   dialog: $("#topics-dialog"),
   editor: $("#topics-editor"),
@@ -116,6 +129,7 @@ function renderPaper(paper, rank) {
   const imp = Math.round((paper.impact ?? 0) * 100);
   const abstract = paper.abstract || "";
   const expandable = Boolean(abstract);
+  const score = typeof paper.score === "number" ? paper.score.toFixed(3) : "—";
 
   li.innerHTML = `
     <div class="rank">${rank}</div>
@@ -131,7 +145,7 @@ function renderPaper(paper, rank) {
       </div>
       ${paper.authors && paper.authors.length ? `<p class="authors">${escapeHTML(formatAuthors(paper.authors))}</p>` : ""}
       <div class="scorebar">
-        <span class="score-total">${(paper.score ?? 0).toFixed(3)}</span>
+        <span class="score-total">${score}</span>
         <div class="bars">
           <div class="bar-group">
             <div class="bar-label"><span>relevance</span><span>${rel}</span></div>
@@ -142,7 +156,10 @@ function renderPaper(paper, rank) {
             <div class="bar-track"><div class="bar-fill imp" style="width:${imp}%"></div></div>
           </div>
         </div>
-        ${expandable ? '<button class="abstract-toggle" type="button" aria-expanded="false">Abstract</button>' : ""}
+        <div class="card-actions">
+          ${expandable ? '<button class="abstract-toggle" type="button" aria-expanded="false">Abstract</button>' : ""}
+          <button class="save-toggle" type="button"></button>
+        </div>
       </div>
     </div>
   `;
@@ -179,7 +196,77 @@ function renderPaper(paper, rank) {
       open ? openPanel() : close();
     });
   }
+
+  const star = li.querySelector(".save-toggle");
+  paintStar(star, Boolean(paper.saved_at));
+  star.addEventListener("click", () => toggleSaved(paper, star));
   return li;
+}
+
+/* ------------------------------------------------------------------ saving */
+
+function paintStar(button, saved) {
+  // The glyph carries its own size, so the star can be larger than the word
+  // beside it without the button growing to match.
+  button.textContent = "";
+  const glyph = document.createElement("span");
+  glyph.className = "star-glyph";
+  glyph.textContent = saved ? "★" : "☆";
+  const label = document.createElement("span");
+  label.textContent = saved ? "Saved" : "Save";
+  button.append(glyph, label);
+
+  button.classList.toggle("on", saved);
+  button.setAttribute("aria-pressed", saved ? "true" : "false");
+  button.title = saved
+    ? "Saved. It is kept whatever its score, and pruning will not delete it."
+    : "Save this paper: keep it out of the windows and safe from pruning.";
+}
+
+function everyCachedPaper() {
+  const lists = Object.values(state.digests).map((d) => d.papers || []);
+  if (state.saved) lists.push(state.saved.papers || []);
+  if (state.search) lists.push(state.search.papers || []);
+  return lists.flat();
+}
+
+async function toggleSaved(paper, button) {
+  const next = !paper.saved_at;
+  button.disabled = true;
+  try {
+    const resp = await fetch(`/api/papers/${encodeURIComponent(paper.id)}/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ saved: next }),
+    });
+    const payload = await resp.json();
+    if (!resp.ok) throw new Error(payload.detail || `server returned ${resp.status}`);
+
+    // The same paper can sit in several cached lists at once, because the day
+    // window is also inside the week and the month. Update every copy, so the
+    // star does not disagree with itself from one tab to the next.
+    const savedAt = payload.paper.saved_at;
+    everyCachedPaper()
+      .filter((p) => p.id === paper.id)
+      .forEach((p) => { p.saved_at = savedAt; });
+    paintStar(button, Boolean(savedAt));
+
+    state.savedTotal += next ? 1 : -1;
+    renderSavedCount();
+    // The Saved list is now stale, so drop it rather than show a wrong one.
+    state.saved = null;
+    if (state.window === "saved" && state.view === "window") await loadSaved();
+  } catch (err) {
+    showBanner(`Could not ${next ? "save" : "unsave"} that paper: ${err.message}`, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function renderSavedCount() {
+  const total = Math.max(0, state.savedTotal);
+  el.savedCount.textContent = total ? String(total) : "";
+  el.savedCount.hidden = !total;
 }
 
 function paperTags(paper) {
@@ -200,10 +287,28 @@ function applyFilters(papers) {
   });
 }
 
-function render() {
-  const digest = state.digests[state.window];
-  el.list.innerHTML = "";
+function paintList(papers) {
+  el.empty.hidden = true;
+  const frag = document.createDocumentFragment();
+  papers.forEach((paper, i) => frag.appendChild(renderPaper(paper, i + 1)));
+  el.list.appendChild(frag);
+}
 
+function showEmpty(html) {
+  el.empty.hidden = false;
+  el.empty.innerHTML = html;
+}
+
+function render() {
+  el.list.innerHTML = "";
+  el.searchOrder.hidden = state.view !== "search";
+  if (state.view === "search") renderSearch();
+  else if (state.window === "saved") renderSaved();
+  else renderDigest();
+}
+
+function renderDigest() {
+  const digest = state.digests[state.window];
   if (!digest) {
     el.summary.textContent = "Loading…";
     return;
@@ -218,18 +323,64 @@ function render() {
     `${digest.considered} papers cleared the relevance threshold · showing ${papers.length}`;
 
   if (papers.length === 0) {
-    el.empty.hidden = false;
-    el.empty.innerHTML = digest.considered
-      ? "No papers match the current filters."
-      : "Nothing stored for this window yet. Run <code>bin/loki fetch --backfill 7</code> " +
-        "in the project folder, or press <strong>Fetch now</strong>.";
+    showEmpty(
+      digest.considered
+        ? "No papers match the current filters."
+        : "Nothing stored for this window yet. Run <code>bin/loki fetch --backfill 7</code> " +
+          "in the project folder, or press <strong>Fetch now</strong>."
+    );
     return;
   }
+  paintList(papers);
+}
 
-  el.empty.hidden = true;
-  const frag = document.createDocumentFragment();
-  papers.forEach((paper, i) => frag.appendChild(renderPaper(paper, i + 1)));
-  el.list.appendChild(frag);
+function renderSaved() {
+  if (!state.saved) {
+    el.summary.textContent = "Loading…";
+    return;
+  }
+  const papers = applyFilters(state.saved.papers || []);
+  const total = state.saved.total;
+  el.summary.textContent = total
+    ? `${total} saved paper${total === 1 ? "" : "s"}, newest first · showing ${papers.length}`
+    : "Nothing saved yet.";
+
+  if (papers.length === 0) {
+    showEmpty(
+      total
+        ? "No saved papers match the current filters."
+        : "Nothing saved yet. Press <strong>☆ Save</strong> on a paper to keep it here. " +
+          "A saved paper is never pruned, however old it gets."
+    );
+    return;
+  }
+  paintList(papers);
+}
+
+function renderSearch() {
+  const found = state.search;
+  if (!found) {
+    el.summary.textContent = "Searching…";
+    return;
+  }
+  const papers = applyFilters(found.papers || []);
+  const shown = found.total > found.count
+    ? `showing the first ${papers.length}`
+    : `showing ${papers.length}`;
+  el.summary.textContent =
+    `${found.total} match${found.total === 1 ? "" : "es"} for “${found.query}” ` +
+    `across every stored paper · ${shown}`;
+
+  if (papers.length === 0) {
+    showEmpty(
+      found.total
+        ? "No matches pass the current filters."
+        : "Nothing matched. Search covers titles and abstracts, so try fewer or " +
+          "shorter words — a word fragment matches what it starts."
+    );
+    return;
+  }
+  paintList(papers);
 }
 
 function renderStats(stats, weights) {
@@ -241,6 +392,7 @@ function renderStats(stats, weights) {
     `<span><strong>${stats.total_papers}</strong> papers stored</span>`,
     bySource ? `<span>${escapeHTML(bySource)}</span>` : "",
     stats.earliest ? `<span>covering ${stats.earliest} → ${stats.latest}</span>` : "",
+    stats.saved_papers ? `<span><strong>${stats.saved_papers}</strong> saved</span>` : "",
   ];
   if (weights) {
     parts.push(
@@ -283,11 +435,61 @@ async function loadDigests() {
     state.digests = payload.digests || {};
     populateTopics(payload.topics);
     renderStats(payload.stats, payload.weights);
+    state.savedTotal = payload.stats?.saved_papers ?? state.savedTotal;
+    renderSavedCount();
     render();
   } catch (err) {
     showBanner(`Could not load the digest: ${err.message}`, true);
     el.summary.textContent = "Unavailable.";
   }
+}
+
+async function loadSaved() {
+  try {
+    const resp = await fetch("/api/saved?limit=200");
+    if (!resp.ok) throw new Error(`server returned ${resp.status}`);
+    state.saved = await resp.json();
+    state.savedTotal = state.saved.total;
+    renderSavedCount();
+    render();
+  } catch (err) {
+    showBanner(`Could not load the saved papers: ${err.message}`, true);
+    el.summary.textContent = "Unavailable.";
+  }
+}
+
+async function runSearch() {
+  const query = el.searchBox.value.trim();
+  el.searchClear.hidden = !query;
+  if (!query) return clearSearch();
+
+  state.view = "search";
+  state.search = null;
+  render();
+
+  const params = new URLSearchParams({
+    q: query, limit: "50", order: state.searchOrder,
+  });
+  try {
+    const resp = await fetch(`/api/search?${params}`);
+    const payload = await resp.json();
+    if (!resp.ok) throw new Error(payload.detail || `server returned ${resp.status}`);
+    state.search = payload;
+    render();
+  } catch (err) {
+    state.search = { query, papers: [], total: 0, count: 0 };
+    showBanner(`Search failed: ${err.message}`, true);
+    render();
+  }
+}
+
+function clearSearch() {
+  el.searchBox.value = "";
+  el.searchClear.hidden = true;
+  state.search = null;
+  state.view = "window";
+  if (state.window === "saved" && !state.saved) loadSaved();
+  else render();
 }
 
 async function pollFetchLog() {
@@ -361,6 +563,35 @@ function addTopicRow(topic = {}) {
   return row;
 }
 
+/* The two scoring weights are one balance, so the dialog shows one slider.
+   Its value is the share given to topic match; impact takes the rest. Two
+   free numbers could be set to sum to anything, and the scorer normalises
+   them anyway, so a single share is the honest control. */
+
+function renderWeightRead() {
+  const topic = Number(el.weightSlider.value);
+  el.weightRead.textContent =
+    `${topic}% topic match · ${100 - topic}% impact factor`;
+}
+
+function setWeights(weights) {
+  const relevance = Number(weights?.relevance_weight);
+  const impact = Number(weights?.impact_weight);
+  const total = relevance + impact;
+  // Whole percent, which the slider steps in, so a balance survives being
+  // loaded and saved again untouched.
+  const share = Number.isFinite(total) && total > 0
+    ? Math.round((relevance / total) * 100)
+    : 70;
+  el.weightSlider.value = String(share);
+  renderWeightRead();
+}
+
+function collectWeights() {
+  const topic = Number(el.weightSlider.value) / 100;
+  return { relevance_weight: topic, impact_weight: 1 - topic };
+}
+
 function showTopicsError(message) {
   el.topicsError.textContent = message || "";
   el.topicsError.hidden = !message;
@@ -385,10 +616,12 @@ async function openTopics() {
     const payload = await resp.json();
     (payload.topics || []).forEach(addTopicRow);
     if (!payload.topics || payload.topics.length === 0) addTopicRow();
+    setWeights(payload.weights);
     el.topicsPath.textContent = payload.path || "";
     el.topicsPath.title = payload.path || "";
   } catch (err) {
     addTopicRow();
+    setWeights(null);
     showTopicsError(`Could not load the current topics: ${err.message}`);
   }
   el.dialog.showModal();
@@ -404,7 +637,7 @@ async function saveTopics() {
     const resp = await fetch("/api/topics", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topics }),
+      body: JSON.stringify({ topics, weights: collectWeights() }),
     });
     const payload = await resp.json();
 
@@ -467,9 +700,28 @@ function init() {
       document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
       state.window = tab.dataset.window;
-      render();
+      // Choosing a tab is a way out of search results.
+      state.view = "window";
+      el.searchBox.value = "";
+      el.searchClear.hidden = true;
+      if (state.window === "saved" && !state.saved) loadSaved();
+      else render();
     });
   });
+
+  el.searchForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    runSearch();
+  });
+  el.searchBox.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") clearSearch();
+  });
+  el.searchClear.addEventListener("click", clearSearch);
+  el.searchOrder.addEventListener("change", () => {
+    state.searchOrder = el.searchOrder.value;
+    if (state.view === "search") runSearch();
+  });
+  el.weightSlider.addEventListener("input", renderWeightRead);
 
   el.date.addEventListener("change", () => {
     state.reference = el.date.value || todayISO();

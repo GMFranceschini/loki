@@ -202,3 +202,126 @@ def test_a_cross_site_get_is_still_served(client):
 def test_allowed_hosts_can_be_extended(client, monkeypatch):
     monkeypatch.setenv("LOKI_ALLOWED_HOSTS", "loki.lan")
     assert client.get("/api/health", headers={"Host": "loki.lan"}).status_code == 200
+
+
+# ---------------------------------------------------------------- search
+
+
+def test_search_finds_a_stored_paper(client):
+    seed(client)
+    payload = client.get("/api/search", params={"q": "Paper"}).json()
+    assert payload["total"] == 3
+    assert payload["indexed"] is True
+    assert len(payload["papers"]) == 3
+
+
+def test_search_needs_something_to_look_for(client):
+    assert client.get("/api/search", params={"q": "   "}).status_code == 400
+
+
+def test_search_rejects_an_unknown_order(client):
+    assert client.get("/api/search", params={"q": "x", "order": "sideways"}).status_code == 422
+
+
+def test_search_can_be_limited_to_one_source(client):
+    seed(client)
+    payload = client.get("/api/search", params={"q": "Paper", "source": "preprint"}).json()
+    assert payload["total"] == 0
+
+
+# ---------------------------------------------------------------- saving
+
+
+def _first_paper_id(client):
+    return client.get("/api/digest", params={"window": "day"}).json()["papers"][0]["id"]
+
+
+def test_saving_a_paper_then_reading_it_back(client):
+    seed(client)
+    paper_id = _first_paper_id(client)
+
+    response = client.post(f"/api/papers/{paper_id}/save", json={"saved": True})
+    assert response.status_code == 200
+    assert response.json()["paper"]["saved_at"]
+
+    listing = client.get("/api/saved").json()
+    assert listing["total"] == 1
+    assert listing["papers"][0]["id"] == paper_id
+
+    assert client.post(f"/api/papers/{paper_id}/save", json={"saved": False}).status_code == 200
+    assert client.get("/api/saved").json()["total"] == 0
+
+
+def test_saving_defaults_to_saving(client):
+    seed(client)
+    paper_id = _first_paper_id(client)
+    assert client.post(f"/api/papers/{paper_id}/save", json={}).json()["paper"]["saved_at"]
+
+
+def test_saving_a_paper_that_is_not_there(client):
+    assert client.post("/api/papers/4242/save", json={"saved": True}).status_code == 404
+
+
+def test_the_saved_count_reaches_the_stats(client):
+    seed(client)
+    client.post(f"/api/papers/{_first_paper_id(client)}/save", json={"saved": True})
+    assert client.get("/api/stats").json()["saved_papers"] == 1
+
+
+def test_an_empty_saved_list_is_not_an_error(client):
+    payload = client.get("/api/saved").json()
+    assert payload == {"count": 0, "total": 0, "limit": 100, "offset": 0, "papers": []}
+
+
+# ---------------------------------------------------------------- weights
+
+
+def test_the_topic_editor_reports_the_current_balance(client):
+    weights = client.get("/api/topics").json()["weights"]
+    assert weights == {"relevance_weight": 0.7, "impact_weight": 0.3}
+
+
+def test_saving_a_new_balance_rewrites_the_config(client):
+    topics = client.get("/api/topics").json()["topics"]
+    response = client.put(
+        "/api/topics",
+        json={"topics": topics, "weights": {"relevance_weight": 0.4, "impact_weight": 0.6}},
+    )
+    assert response.status_code == 200
+    assert client.get("/api/topics").json()["weights"] == {
+        "relevance_weight": 0.4, "impact_weight": 0.6
+    }
+
+
+def test_a_balance_of_nothing_is_refused(client):
+    topics = client.get("/api/topics").json()["topics"]
+    response = client.put(
+        "/api/topics",
+        json={"topics": topics, "weights": {"relevance_weight": 0, "impact_weight": 0}},
+    )
+    assert response.status_code == 400
+    assert "weight" in response.json()["detail"]
+    # The refused save must leave the file as it was.
+    assert client.get("/api/topics").json()["weights"]["relevance_weight"] == 0.7
+
+
+def test_omitting_the_balance_leaves_it_alone(client):
+    topics = client.get("/api/topics").json()["topics"]
+    assert client.put("/api/topics", json={"topics": topics}).status_code == 200
+    assert client.get("/api/topics").json()["weights"]["relevance_weight"] == 0.7
+
+
+# ---------------------------------------------------------------- caching
+
+
+def test_the_ui_files_are_revalidated_not_guessed(client):
+    """A stale UI looks broken rather than cached.
+
+    With no Cache-Control a browser picks a freshness lifetime from how long
+    the file had gone unchanged, so an edit to a long-stable app.js does not
+    appear on reload. no-cache keeps the copy but checks it every time.
+    """
+    for path in ("/", "/static/app.js", "/static/styles.css"):
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert response.headers["cache-control"] == "no-cache", path

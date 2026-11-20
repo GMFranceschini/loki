@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loki — Literature Radar</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <div>
+      <h1>Loki</h1>
+      <p class="tagline">Daily literature radar · biological research</p>
+    </div>
+  </div>
+  <div class="controls">
+    <label class="field">
+      <span>As of</span>
+      <input type="date" id="reference-date">
+    </label>
+    <label class="field">
+      <span>Show</span>
+      <select id="limit">
+        <option value="10" selected>Top 10</option>
+        <option value="20">Top 20</option>
+        <option value="50">Top 50</option>
+      </select>
+    </label>
+    <button id="topics-btn" class="btn">Topics</button>
+    <button id="fetch-btn" class="btn primary">Fetch now</button>
+    <button id="theme-btn" class="btn icon" title="Switch theme" aria-label="Switch theme">◐</button>
+  </div>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+
+<nav class="tabs" role="tablist">
+  <button class="tab active" data-window="day"   role="tab">Day</button>
+  <button class="tab"        data-window="week"  role="tab">Week</button>
+  <button class="tab"        data-window="month" role="tab">Month</button>
+</nav>
+
+<main>
+  <section class="meta-row">
+    <p id="window-summary" class="window-summary">Loading…</p>
+    <div class="filters">
+      <select id="topic-filter"><option value="">All topics</option></select>
+      <select id="source-filter">
+        <option value="">All sources</option>
+        <option value="journal">Journals only</option>
+        <option value="preprint">Preprints only</option>
+      </select>
+    </div>
+  </section>
+
+  <ol id="paper-list" class="papers"></ol>
+  <p id="empty-state" class="empty" hidden></p>
+</main>
+
+<footer class="footer">
+  <div id="stats" class="stats"></div>
+  <details class="how">
+    <summary>How the ranking works</summary>
+    <div class="how-body">
+      <p>
+        Every paper gets a <strong>score</strong> between 0 and 1, combining two parts
+        with the weights set in <code>config/interests.yaml</code>. Each digest
+        window is widened by <code>window_padding_days</code> on both sides, so a
+        paper indexed or posted a little earlier still shows up:
+      </p>
+      <dl>
+        <dt>Relevance</dt>
+        <dd>
+          Semantic similarity between the paper's title and abstract and your topic
+          prose, computed locally with a static embedding model. The mean embedding of
+          recent literature is subtracted first, so generic life-science wording does
+          not inflate the match. Scores are squashed onto 0–1.
+        </dd>
+        <dt>Tags</dt>
+        <dd>
+          A topic is shown only when it really matches, so a paper can carry
+          several tags or none. Tags are chosen by raw similarity, while topic
+          weights steer the ranking — a lower-weighted topic is still named when
+          it is the one that fits. The topic <em>name</em> counts towards matching
+          alongside its description, so keep the two about the same subject.
+        </dd>
+        <dt>Impact</dt>
+        <dd>
+          The journal's impact factor from <code>config/journals.json</code>, log-compressed
+          so the gap between IF&nbsp;2 and IF&nbsp;10 counts for more than the gap between
+          IF&nbsp;50 and IF&nbsp;90. Preprints have no impact factor and take a flat value.
+          Journals missing from the table score lower still.
+        </dd>
+      </dl>
+      <p class="caveat">
+        Impact factors are hand-curated approximations, not licensed JCR data. Treat them
+        as a prestige prior. Edit the file to correct or extend them, then run
+        <code>bin/loki rescore</code>.
+      </p>
+    </div>
+  </details>
+</footer>
+
+<dialog id="topics-dialog" class="dialog">
+  <form method="dialog" class="dialog-inner" id="topics-form">
+    <header class="dialog-head">
+      <div>
+        <h2>Topics of interest</h2>
+        <p class="dialog-sub">
+          Relevance is measured against these. Describe each one in a sentence or two,
+          the way you would to a colleague — richer wording matches better than keywords.
+        </p>
+      </div>
+      <button type="button" class="btn icon" id="topics-close" aria-label="Close">✕</button>
+    </header>
+
+    <div id="topics-error" class="dialog-error" hidden></div>
+    <div id="topics-editor" class="topics-editor"></div>
+
+    <footer class="dialog-foot">
+      <button type="button" class="btn" id="topic-add">+ Add topic</button>
+      <span class="dialog-path" id="topics-path"></span>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="topics-cancel">Cancel</button>
+      <button type="button" class="btn primary" id="topics-save">Save &amp; rescore</button>
+    </footer>
+  </form>
+</dialog>
+
+<template id="topic-row-template">
+  <div class="topic-row">
+    <div class="topic-row-head">
+      <input class="topic-name" type="text" placeholder="Topic name, e.g. Genome editing" maxlength="80">
+      <label class="weight-field">
+        <span>weight</span>
+        <input class="topic-weight" type="number" min="0.1" max="100" step="0.1" value="1">
+      </label>
+      <button type="button" class="btn icon danger topic-remove" aria-label="Remove topic">✕</button>
+    </div>
+    <label class="topic-field">
+      <span>What it is about <em>— used for relevance matching</em></span>
+      <textarea class="topic-prose" rows="3" maxlength="2000"
+        placeholder="CRISPR-Cas genome editing, base editing and prime editing. Delivery of editors into primary human cells and in vivo tissues. Off-target effects and therapeutic correction of mutations."></textarea>
+    </label>
+    <label class="topic-field">
+      <span>PubMed query <em>— optional, pre-filters what gets downloaded</em></span>
+      <textarea class="topic-pubmed" rows="2" maxlength="2000"
+        placeholder='(CRISPR[tiab] OR "base editing"[tiab] OR "prime editing"[tiab])'></textarea>
+    </label>
+  </div>
+</template>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

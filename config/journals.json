@@ -1,0 +1,1270 @@
+{
+  "_meta": {
+    "description": "Approximate journal impact factors for ranking. Matched on journal title or ISO abbreviation, case- and punctuation-insensitive.",
+    "caveat": "These values are APPROXIMATE, hand-curated from recent Journal Citation Reports figures. They are not an authoritative or licensed JCR dataset and they drift year to year. Treat them as a prestige prior, not a precise metric. Edit freely: add a row, change a number, and Loki picks it up on the next fetch or server restart.",
+    "schema": "journals[] = {title, abbrev, impact_factor}; optional 'issn' list per row is also matched if present.",
+    "count": 252
+  },
+  "journals": [
+    {
+      "title": "Nature Reviews Drug Discovery",
+      "abbrev": "Nat Rev Drug Discov",
+      "impact_factor": 122.7
+    },
+    {
+      "title": "The Lancet",
+      "abbrev": "Lancet",
+      "impact_factor": 98.4
+    },
+    {
+      "title": "New England Journal of Medicine",
+      "abbrev": "N Engl J Med",
+      "impact_factor": 96.2
+    },
+    {
+      "title": "BMJ",
+      "abbrev": "BMJ",
+      "impact_factor": 93.6
+    },
+    {
+      "title": "Nature Reviews Molecular Cell Biology",
+      "abbrev": "Nat Rev Mol Cell Biol",
+      "impact_factor": 81.3
+    },
+    {
+      "title": "Nature Reviews Clinical Oncology",
+      "abbrev": "Nat Rev Clin Oncol",
+      "impact_factor": 81.1
+    },
+    {
+      "title": "Nature Reviews Materials",
+      "abbrev": "Nat Rev Mater",
+      "impact_factor": 79.8
+    },
+    {
+      "title": "Nature Reviews Disease Primers",
+      "abbrev": "Nat Rev Dis Primers",
+      "impact_factor": 76.9
+    },
+    {
+      "title": "Nature Reviews Cancer",
+      "abbrev": "Nat Rev Cancer",
+      "impact_factor": 72.5
+    },
+    {
+      "title": "Nature Reviews Microbiology",
+      "abbrev": "Nat Rev Microbiol",
+      "impact_factor": 69.2
+    },
+    {
+      "title": "Nature Reviews Immunology",
+      "abbrev": "Nat Rev Immunol",
+      "impact_factor": 67.7
+    },
+    {
+      "title": "Nature Reviews Immunology Reviews",
+      "abbrev": "Nat Rev Immunol Rev",
+      "impact_factor": 67.7
+    },
+    {
+      "title": "JAMA",
+      "abbrev": "JAMA",
+      "impact_factor": 63.1
+    },
+    {
+      "title": "Nature Medicine",
+      "abbrev": "Nat Med",
+      "impact_factor": 58.7
+    },
+    {
+      "title": "Annals of Oncology",
+      "abbrev": "Ann Oncol",
+      "impact_factor": 56.7
+    },
+    {
+      "title": "Chemical Reviews",
+      "abbrev": "Chem Rev",
+      "impact_factor": 51.4
+    },
+    {
+      "title": "Nature",
+      "abbrev": "Nature",
+      "impact_factor": 50.5
+    },
+    {
+      "title": "Nature Reviews Methods Primers",
+      "abbrev": "Nat Rev Methods Primers",
+      "impact_factor": 50.1
+    },
+    {
+      "title": "Nature Energy",
+      "abbrev": "Nat Energy",
+      "impact_factor": 49.7
+    },
+    {
+      "title": "Cancer Cell",
+      "abbrev": "Cancer Cell",
+      "impact_factor": 48.8
+    },
+    {
+      "title": "Science",
+      "abbrev": "Science",
+      "impact_factor": 47.7
+    },
+    {
+      "title": "The Lancet Neurology",
+      "abbrev": "Lancet Neurol",
+      "impact_factor": 46.5
+    },
+    {
+      "title": "Nature Reviews Gastroenterology & Hepatology",
+      "abbrev": "Nat Rev Gastroenterol Hepatol",
+      "impact_factor": 45.9
+    },
+    {
+      "title": "Nature Reviews Gastroenterology",
+      "abbrev": "Nat Rev Gastroenterol",
+      "impact_factor": 45.9
+    },
+    {
+      "title": "Cell",
+      "abbrev": "Cell",
+      "impact_factor": 45.5
+    },
+    {
+      "title": "Nature Reviews Physics",
+      "abbrev": "Nat Rev Phys",
+      "impact_factor": 44.8
+    },
+    {
+      "title": "The Lancet Diabetes & Endocrinology",
+      "abbrev": "Lancet Diabetes Endocrinol",
+      "impact_factor": 44.0
+    },
+    {
+      "title": "Nature Reviews Earth & Environment",
+      "abbrev": "Nat Rev Earth Environ",
+      "impact_factor": 42.6
+    },
+    {
+      "title": "Journal of Clinical Oncology",
+      "abbrev": "J Clin Oncol",
+      "impact_factor": 42.1
+    },
+    {
+      "title": "Nature Reviews Cardiology",
+      "abbrev": "Nat Rev Cardiol",
+      "impact_factor": 41.7
+    },
+    {
+      "title": "The Lancet Oncology",
+      "abbrev": "Lancet Oncol",
+      "impact_factor": 41.6
+    },
+    {
+      "title": "Signal Transduction and Targeted Therapy",
+      "abbrev": "Signal Transduct Target Ther",
+      "impact_factor": 40.8
+    },
+    {
+      "title": "Chemical Society Reviews",
+      "abbrev": "Chem Soc Rev",
+      "impact_factor": 40.4
+    },
+    {
+      "title": "Nature Reviews Genetics",
+      "abbrev": "Nat Rev Genet",
+      "impact_factor": 39.1
+    },
+    {
+      "title": "Nature Reviews Genetics Reviews",
+      "abbrev": "Nat Rev Genet Rev",
+      "impact_factor": 39.1
+    },
+    {
+      "title": "The Lancet Respiratory Medicine",
+      "abbrev": "Lancet Respir Med",
+      "impact_factor": 38.7
+    },
+    {
+      "title": "Nature Nanotechnology",
+      "abbrev": "Nat Nanotechnol",
+      "impact_factor": 38.1
+    },
+    {
+      "title": "Nature Reviews Chemistry",
+      "abbrev": "Nat Rev Chem",
+      "impact_factor": 38.1
+    },
+    {
+      "title": "Nature Reviews Neurology",
+      "abbrev": "Nat Rev Neurol",
+      "impact_factor": 38.1
+    },
+    {
+      "title": "European Heart Journal",
+      "abbrev": "Eur Heart J",
+      "impact_factor": 37.6
+    },
+    {
+      "title": "Nature Materials",
+      "abbrev": "Nat Mater",
+      "impact_factor": 37.2
+    },
+    {
+      "title": "The Lancet Infectious Diseases",
+      "abbrev": "Lancet Infect Dis",
+      "impact_factor": 36.4
+    },
+    {
+      "title": "Nature Methods",
+      "abbrev": "Nat Methods",
+      "impact_factor": 36.1
+    },
+    {
+      "title": "Circulation",
+      "abbrev": "Circulation",
+      "impact_factor": 35.5
+    },
+    {
+      "title": "Nature Biotechnology",
+      "abbrev": "Nat Biotechnol",
+      "impact_factor": 33.1
+    },
+    {
+      "title": "Nature Genetics",
+      "abbrev": "Nat Genet",
+      "impact_factor": 31.7
+    },
+    {
+      "title": "Nature Reviews Endocrinology",
+      "abbrev": "Nat Rev Endocrinol",
+      "impact_factor": 31.0
+    },
+    {
+      "title": "Nature Reviews Bioengineering",
+      "abbrev": "Nat Rev Bioeng",
+      "impact_factor": 30.0
+    },
+    {
+      "title": "Cancer Discovery",
+      "abbrev": "Cancer Discov",
+      "impact_factor": 29.7
+    },
+    {
+      "title": "Nature Climate Change",
+      "abbrev": "Nat Clim Chang",
+      "impact_factor": 29.6
+    },
+    {
+      "title": "Journal of Hematology & Oncology",
+      "abbrev": "J Hematol Oncol",
+      "impact_factor": 29.5
+    },
+    {
+      "title": "Nature Reviews Neuroscience",
+      "abbrev": "Nat Rev Neurosci",
+      "impact_factor": 28.7
+    },
+    {
+      "title": "Nature Reviews Nephrology",
+      "abbrev": "Nat Rev Nephrol",
+      "impact_factor": 28.6
+    },
+    {
+      "title": "Cell Research",
+      "abbrev": "Cell Res",
+      "impact_factor": 28.1
+    },
+    {
+      "title": "Nature Water",
+      "abbrev": "Nat Water",
+      "impact_factor": 28.0
+    },
+    {
+      "title": "Nature Immunology",
+      "abbrev": "Nat Immunol",
+      "impact_factor": 27.7
+    },
+    {
+      "title": "Cell Metabolism",
+      "abbrev": "Cell Metab",
+      "impact_factor": 27.7
+    },
+    {
+      "title": "Molecular Cancer",
+      "abbrev": "Mol Cancer",
+      "impact_factor": 27.7
+    },
+    {
+      "title": "Advanced Materials",
+      "abbrev": "Adv Mater",
+      "impact_factor": 27.4
+    },
+    {
+      "title": "Annual Review of Immunology",
+      "abbrev": "Annu Rev Immunol",
+      "impact_factor": 27.0
+    },
+    {
+      "title": "Journal of Hepatology",
+      "abbrev": "J Hepatol",
+      "impact_factor": 26.8
+    },
+    {
+      "title": "Nature Biomedical Engineering",
+      "abbrev": "Nat Biomed Eng",
+      "impact_factor": 26.6
+    },
+    {
+      "title": "Gastroenterology",
+      "abbrev": "Gastroenterology",
+      "impact_factor": 25.7
+    },
+    {
+      "title": "Nature Sustainability",
+      "abbrev": "Nat Sustain",
+      "impact_factor": 25.7
+    },
+    {
+      "title": "Immunity",
+      "abbrev": "Immunity",
+      "impact_factor": 25.5
+    },
+    {
+      "title": "Science Robotics",
+      "abbrev": "Sci Robot",
+      "impact_factor": 25.0
+    },
+    {
+      "title": "Nature Reviews Rheumatology",
+      "abbrev": "Nat Rev Rheumatol",
+      "impact_factor": 24.4
+    },
+    {
+      "title": "Gut",
+      "abbrev": "Gut",
+      "impact_factor": 23.0
+    },
+    {
+      "title": "Nature Cancer",
+      "abbrev": "Nat Cancer",
+      "impact_factor": 22.7
+    },
+    {
+      "title": "JAMA Oncology",
+      "abbrev": "JAMA Oncol",
+      "impact_factor": 22.5
+    },
+    {
+      "title": "JAMA Internal Medicine",
+      "abbrev": "JAMA Intern Med",
+      "impact_factor": 22.5
+    },
+    {
+      "title": "JAMA Psychiatry",
+      "abbrev": "JAMA Psychiatry",
+      "impact_factor": 22.5
+    },
+    {
+      "title": "Cellular & Molecular Immunology",
+      "abbrev": "Cell Mol Immunol",
+      "impact_factor": 21.8
+    },
+    {
+      "title": "Journal of the American College of Cardiology",
+      "abbrev": "J Am Coll Cardiol",
+      "impact_factor": 21.7
+    },
+    {
+      "title": "Nature Cell Biology",
+      "abbrev": "Nat Cell Biol",
+      "impact_factor": 21.3
+    },
+    {
+      "title": "Nature Neuroscience",
+      "abbrev": "Nat Neurosci",
+      "impact_factor": 21.2
+    },
+    {
+      "title": "Blood",
+      "abbrev": "Blood",
+      "impact_factor": 21.0
+    },
+    {
+      "title": "The Lancet Microbe",
+      "abbrev": "Lancet Microbe",
+      "impact_factor": 20.9
+    },
+    {
+      "title": "Cell Host & Microbe",
+      "abbrev": "Cell Host Microbe",
+      "impact_factor": 20.6
+    },
+    {
+      "title": "Nature Microbiology",
+      "abbrev": "Nat Microbiol",
+      "impact_factor": 20.5
+    },
+    {
+      "title": "JAMA Neurology",
+      "abbrev": "JAMA Neurol",
+      "impact_factor": 20.4
+    },
+    {
+      "title": "Annals of the Rheumatic Diseases",
+      "abbrev": "Ann Rheum Dis",
+      "impact_factor": 20.3
+    },
+    {
+      "title": "Nature Food",
+      "abbrev": "Nat Food",
+      "impact_factor": 20.1
+    },
+    {
+      "title": "Annual Review of Plant Biology",
+      "abbrev": "Annu Rev Plant Biol",
+      "impact_factor": 20.1
+    },
+    {
+      "title": "Cell Stem Cell",
+      "abbrev": "Cell Stem Cell",
+      "impact_factor": 19.8
+    },
+    {
+      "title": "Annals of Internal Medicine",
+      "abbrev": "Ann Intern Med",
+      "impact_factor": 19.6
+    },
+    {
+      "title": "Pharmacological Reviews",
+      "abbrev": "Pharmacol Rev",
+      "impact_factor": 19.3
+    },
+    {
+      "title": "American Journal of Respiratory and Critical Care Medicine",
+      "abbrev": "Am J Respir Crit Care Med",
+      "impact_factor": 19.3
+    },
+    {
+      "title": "Nature Chemistry",
+      "abbrev": "Nat Chem",
+      "impact_factor": 19.2
+    },
+    {
+      "title": "Nature Metabolism",
+      "abbrev": "Nat Metab",
+      "impact_factor": 18.9
+    },
+    {
+      "title": "Nature Machine Intelligence",
+      "abbrev": "Nat Mach Intell",
+      "impact_factor": 18.8
+    },
+    {
+      "title": "Nature Physics",
+      "abbrev": "Nat Phys",
+      "impact_factor": 17.6
+    },
+    {
+      "title": "Science Immunology",
+      "abbrev": "Sci Immunol",
+      "impact_factor": 17.6
+    },
+    {
+      "title": "Trends in Plant Science",
+      "abbrev": "Trends Plant Sci",
+      "impact_factor": 17.3
+    },
+    {
+      "title": "Molecular Plant",
+      "abbrev": "Mol Plant",
+      "impact_factor": 17.1
+    },
+    {
+      "title": "Nature Aging",
+      "abbrev": "Nat Aging",
+      "impact_factor": 17.0
+    },
+    {
+      "title": "Nucleic Acids Research",
+      "abbrev": "Nucleic Acids Res",
+      "impact_factor": 16.6
+    },
+    {
+      "title": "Circulation Research",
+      "abbrev": "Circ Res",
+      "impact_factor": 16.5
+    },
+    {
+      "title": "National Science Review",
+      "abbrev": "Natl Sci Rev",
+      "impact_factor": 16.3
+    },
+    {
+      "title": "Angewandte Chemie International Edition",
+      "abbrev": "Angew Chem Int Ed Engl",
+      "impact_factor": 16.1
+    },
+    {
+      "title": "Nature Synthesis",
+      "abbrev": "Nat Synth",
+      "impact_factor": 16.0
+    },
+    {
+      "title": "Nature Human Behaviour",
+      "abbrev": "Nat Hum Behav",
+      "impact_factor": 15.9
+    },
+    {
+      "title": "Nature Plants",
+      "abbrev": "Nat Plants",
+      "impact_factor": 15.8
+    },
+    {
+      "title": "Science Translational Medicine",
+      "abbrev": "Sci Transl Med",
+      "impact_factor": 15.8
+    },
+    {
+      "title": "PLoS Medicine",
+      "abbrev": "PLoS Med",
+      "impact_factor": 15.8
+    },
+    {
+      "title": "ACS Nano",
+      "abbrev": "ACS Nano",
+      "impact_factor": 15.8
+    },
+    {
+      "title": "The Lancet Haematology",
+      "abbrev": "Lancet Haematol",
+      "impact_factor": 15.4
+    },
+    {
+      "title": "The American Journal of Psychiatry",
+      "abbrev": "Am J Psychiatry",
+      "impact_factor": 15.1
+    },
+    {
+      "title": "Molecular Neurodegeneration",
+      "abbrev": "Mol Neurodegener",
+      "impact_factor": 14.9
+    },
+    {
+      "title": "Kidney International",
+      "abbrev": "Kidney Int",
+      "impact_factor": 14.8
+    },
+    {
+      "title": "Diabetes Care",
+      "abbrev": "Diabetes Care",
+      "impact_factor": 14.8
+    },
+    {
+      "title": "Nature Communications",
+      "abbrev": "Nat Commun",
+      "impact_factor": 14.7
+    },
+    {
+      "title": "Neuron",
+      "abbrev": "Neuron",
+      "impact_factor": 14.7
+    },
+    {
+      "title": "Autophagy",
+      "abbrev": "Autophagy",
+      "impact_factor": 14.6
+    },
+    {
+      "title": "Molecular Cell",
+      "abbrev": "Mol Cell",
+      "impact_factor": 14.5
+    },
+    {
+      "title": "Journal of the American Chemical Society",
+      "abbrev": "J Am Chem Soc",
+      "impact_factor": 14.4
+    },
+    {
+      "title": "Advanced Science",
+      "abbrev": "Adv Sci",
+      "impact_factor": 14.3
+    },
+    {
+      "title": "Nature Ecology & Evolution",
+      "abbrev": "Nat Ecol Evol",
+      "impact_factor": 13.9
+    },
+    {
+      "title": "Microbiome",
+      "abbrev": "Microbiome",
+      "impact_factor": 13.8
+    },
+    {
+      "title": "Cell Death & Differentiation",
+      "abbrev": "Cell Death Differ",
+      "impact_factor": 13.7
+    },
+    {
+      "title": "Trends in Cell Biology",
+      "abbrev": "Trends Cell Biol",
+      "impact_factor": 13.4
+    },
+    {
+      "title": "Journal of Clinical Investigation",
+      "abbrev": "J Clin Invest",
+      "impact_factor": 13.3
+    },
+    {
+      "title": "Nature Protocols",
+      "abbrev": "Nat Protoc",
+      "impact_factor": 13.1
+    },
+    {
+      "title": "Trends in Neurosciences",
+      "abbrev": "Trends Neurosci",
+      "impact_factor": 13.1
+    },
+    {
+      "title": "Nature Reviews Urology",
+      "abbrev": "Nat Rev Urol",
+      "impact_factor": 13.1
+    },
+    {
+      "title": "Alzheimer's & Dementia",
+      "abbrev": "Alzheimers Dement",
+      "impact_factor": 13.0
+    },
+    {
+      "title": "Nature Chemical Biology",
+      "abbrev": "Nat Chem Biol",
+      "impact_factor": 12.9
+    },
+    {
+      "title": "Hepatology",
+      "abbrev": "Hepatology",
+      "impact_factor": 12.9
+    },
+    {
+      "title": "Leukemia",
+      "abbrev": "Leukemia",
+      "impact_factor": 12.8
+    },
+    {
+      "title": "Biomaterials",
+      "abbrev": "Biomaterials",
+      "impact_factor": 12.8
+    },
+    {
+      "title": "Med",
+      "abbrev": "Med",
+      "impact_factor": 12.8
+    },
+    {
+      "title": "Journal of Experimental Medicine",
+      "abbrev": "J Exp Med",
+      "impact_factor": 12.6
+    },
+    {
+      "title": "Protein & Cell",
+      "abbrev": "Protein Cell",
+      "impact_factor": 12.6
+    },
+    {
+      "title": "Allergy",
+      "abbrev": "Allergy",
+      "impact_factor": 12.6
+    },
+    {
+      "title": "Nature Structural & Molecular Biology",
+      "abbrev": "Nat Struct Mol Biol",
+      "impact_factor": 12.5
+    },
+    {
+      "title": "Cancer Research",
+      "abbrev": "Cancer Res",
+      "impact_factor": 12.5
+    },
+    {
+      "title": "Gut Microbes",
+      "abbrev": "Gut Microbes",
+      "impact_factor": 12.2
+    },
+    {
+      "title": "Annual Review of Biochemistry",
+      "abbrev": "Annu Rev Biochem",
+      "impact_factor": 12.1
+    },
+    {
+      "title": "Annual Review of Neuroscience",
+      "abbrev": "Annu Rev Neurosci",
+      "impact_factor": 12.1
+    },
+    {
+      "title": "Molecular Therapy",
+      "abbrev": "Mol Ther",
+      "impact_factor": 12.1
+    },
+    {
+      "title": "Trends in Cancer",
+      "abbrev": "Trends Cancer",
+      "impact_factor": 12.0
+    },
+    {
+      "title": "Trends in Molecular Medicine",
+      "abbrev": "Trends Mol Med",
+      "impact_factor": 12.0
+    },
+    {
+      "title": "Nature Computational Science",
+      "abbrev": "Nat Comput Sci",
+      "impact_factor": 12.0
+    },
+    {
+      "title": "Nature Reviews Bioinformatics",
+      "abbrev": "Nat Rev Bioinform",
+      "impact_factor": 12.0
+    },
+    {
+      "title": "Trends in Ecology & Evolution",
+      "abbrev": "Trends Ecol Evol",
+      "impact_factor": 11.9
+    },
+    {
+      "title": "Cell Reports Medicine",
+      "abbrev": "Cell Rep Med",
+      "impact_factor": 11.7
+    },
+    {
+      "title": "Science Advances",
+      "abbrev": "Sci Adv",
+      "impact_factor": 11.7
+    },
+    {
+      "title": "Trends in Immunology",
+      "abbrev": "Trends Immunol",
+      "impact_factor": 11.6
+    },
+    {
+      "title": "Global Change Biology",
+      "abbrev": "Glob Chang Biol",
+      "impact_factor": 11.6
+    },
+    {
+      "title": "Trends in Microbiology",
+      "abbrev": "Trends Microbiol",
+      "impact_factor": 11.5
+    },
+    {
+      "title": "Genomics Proteomics Bioinformatics",
+      "abbrev": "Genomics Proteomics Bioinformatics",
+      "impact_factor": 11.5
+    },
+    {
+      "title": "Journal of Allergy and Clinical Immunology",
+      "abbrev": "J Allergy Clin Immunol",
+      "impact_factor": 11.4
+    },
+    {
+      "title": "Trends in Pharmacological Sciences",
+      "abbrev": "Trends Pharmacol Sci",
+      "impact_factor": 11.2
+    },
+    {
+      "title": "Cell Genomics",
+      "abbrev": "Cell Genom",
+      "impact_factor": 11.1
+    },
+    {
+      "title": "Trends in Biochemical Sciences",
+      "abbrev": "Trends Biochem Sci",
+      "impact_factor": 11.0
+    },
+    {
+      "title": "Molecular Biology and Evolution",
+      "abbrev": "Mol Biol Evol",
+      "impact_factor": 11.0
+    },
+    {
+      "title": "ISME Journal",
+      "abbrev": "ISME J",
+      "impact_factor": 11.0
+    },
+    {
+      "title": "Developmental Cell",
+      "abbrev": "Dev Cell",
+      "impact_factor": 10.7
+    },
+    {
+      "title": "Biosensors and Bioelectronics",
+      "abbrev": "Biosens Bioelectron",
+      "impact_factor": 10.7
+    },
+    {
+      "title": "Brain",
+      "abbrev": "Brain",
+      "impact_factor": 10.6
+    },
+    {
+      "title": "Genome Medicine",
+      "abbrev": "Genome Med",
+      "impact_factor": 10.4
+    },
+    {
+      "title": "Clinical Cancer Research",
+      "abbrev": "Clin Cancer Res",
+      "impact_factor": 10.4
+    },
+    {
+      "title": "Journal for ImmunoTherapy of Cancer",
+      "abbrev": "J Immunother Cancer",
+      "impact_factor": 10.3
+    },
+    {
+      "title": "Genome Biology",
+      "abbrev": "Genome Biol",
+      "impact_factor": 10.1
+    },
+    {
+      "title": "Plant Biotechnology Journal",
+      "abbrev": "Plant Biotechnol J",
+      "impact_factor": 10.1
+    },
+    {
+      "title": "Plant Cell",
+      "abbrev": "Plant Cell",
+      "impact_factor": 10.0
+    },
+    {
+      "title": "PLoS Biology",
+      "abbrev": "PLoS Biol",
+      "impact_factor": 9.8
+    },
+    {
+      "title": "EBioMedicine",
+      "abbrev": "EBioMedicine",
+      "impact_factor": 9.7
+    },
+    {
+      "title": "Molecular Psychiatry",
+      "abbrev": "Mol Psychiatry",
+      "impact_factor": 9.6
+    },
+    {
+      "title": "Biological Psychiatry",
+      "abbrev": "Biol Psychiatry",
+      "impact_factor": 9.6
+    },
+    {
+      "title": "Nano Letters",
+      "abbrev": "Nano Lett",
+      "impact_factor": 9.6
+    },
+    {
+      "title": "Experimental & Molecular Medicine",
+      "abbrev": "Exp Mol Med",
+      "impact_factor": 9.5
+    },
+    {
+      "title": "Proceedings of the National Academy of Sciences of the United States of America",
+      "abbrev": "Proc Natl Acad Sci U S A",
+      "impact_factor": 9.4
+    },
+    {
+      "title": "The EMBO Journal",
+      "abbrev": "EMBO J",
+      "impact_factor": 9.4
+    },
+    {
+      "title": "Annual Review of Microbiology",
+      "abbrev": "Annu Rev Microbiol",
+      "impact_factor": 9.4
+    },
+    {
+      "title": "Cell Systems",
+      "abbrev": "Cell Syst",
+      "impact_factor": 9.3
+    },
+    {
+      "title": "Acta Neuropathologica",
+      "abbrev": "Acta Neuropathol",
+      "impact_factor": 9.3
+    },
+    {
+      "title": "Science China Life Sciences",
+      "abbrev": "Sci China Life Sci",
+      "impact_factor": 9.1
+    },
+    {
+      "title": "Journal of the American Society of Nephrology",
+      "abbrev": "J Am Soc Nephrol",
+      "impact_factor": 8.8
+    },
+    {
+      "title": "Trends in Genetics",
+      "abbrev": "Trends Genet",
+      "impact_factor": 8.6
+    },
+    {
+      "title": "Molecular Systems Biology",
+      "abbrev": "Mol Syst Biol",
+      "impact_factor": 8.5
+    },
+    {
+      "title": "Genes & Development",
+      "abbrev": "Genes Dev",
+      "impact_factor": 8.3
+    },
+    {
+      "title": "New Phytologist",
+      "abbrev": "New Phytol",
+      "impact_factor": 8.3
+    },
+    {
+      "title": "Current Biology",
+      "abbrev": "Curr Biol",
+      "impact_factor": 8.1
+    },
+    {
+      "title": "The American Journal of Human Genetics",
+      "abbrev": "Am J Hum Genet",
+      "impact_factor": 8.1
+    },
+    {
+      "title": "Physical Review Letters",
+      "abbrev": "Phys Rev Lett",
+      "impact_factor": 8.1
+    },
+    {
+      "title": "Nature Mental Health",
+      "abbrev": "Nat Ment Health",
+      "impact_factor": 8.0
+    },
+    {
+      "title": "Aging Cell",
+      "abbrev": "Aging Cell",
+      "impact_factor": 8.0
+    },
+    {
+      "title": "Cell Reports",
+      "abbrev": "Cell Rep",
+      "impact_factor": 7.5
+    },
+    {
+      "title": "Annual Review of Cell and Developmental Biology",
+      "abbrev": "Annu Rev Cell Dev Biol",
+      "impact_factor": 7.5
+    },
+    {
+      "title": "Immunological Reviews",
+      "abbrev": "Immunol Rev",
+      "impact_factor": 7.5
+    },
+    {
+      "title": "BMC Medicine",
+      "abbrev": "BMC Med",
+      "impact_factor": 7.0
+    },
+    {
+      "title": "Cell Chemical Biology",
+      "abbrev": "Cell Chem Biol",
+      "impact_factor": 6.9
+    },
+    {
+      "title": "Oncogene",
+      "abbrev": "Oncogene",
+      "impact_factor": 6.9
+    },
+    {
+      "title": "npj Vaccines",
+      "abbrev": "NPJ Vaccines",
+      "impact_factor": 6.9
+    },
+    {
+      "title": "Briefings in Bioinformatics",
+      "abbrev": "Brief Bioinform",
+      "impact_factor": 6.8
+    },
+    {
+      "title": "Journal of Cell Biology",
+      "abbrev": "J Cell Biol",
+      "impact_factor": 6.8
+    },
+    {
+      "title": "Ecology Letters",
+      "abbrev": "Ecol Lett",
+      "impact_factor": 6.7
+    },
+    {
+      "title": "Patterns",
+      "abbrev": "Patterns",
+      "impact_factor": 6.7
+    },
+    {
+      "title": "Science Signaling",
+      "abbrev": "Sci Signal",
+      "impact_factor": 6.6
+    },
+    {
+      "title": "Genetics in Medicine",
+      "abbrev": "Genet Med",
+      "impact_factor": 6.6
+    },
+    {
+      "title": "EMBO Reports",
+      "abbrev": "EMBO Rep",
+      "impact_factor": 6.5
+    },
+    {
+      "title": "Molecular Therapy Nucleic Acids",
+      "abbrev": "Mol Ther Nucleic Acids",
+      "impact_factor": 6.5
+    },
+    {
+      "title": "Systematic Biology",
+      "abbrev": "Syst Biol",
+      "impact_factor": 6.5
+    },
+    {
+      "title": "eLife",
+      "abbrev": "Elife",
+      "impact_factor": 6.4
+    },
+    {
+      "title": "JCI Insight",
+      "abbrev": "JCI Insight",
+      "impact_factor": 6.3
+    },
+    {
+      "title": "Genome Research",
+      "abbrev": "Genome Res",
+      "impact_factor": 6.2
+    },
+    {
+      "title": "Annual Review of Genomics and Human Genetics",
+      "abbrev": "Annu Rev Genomics Hum Genet",
+      "impact_factor": 6.2
+    },
+    {
+      "title": "Diabetes",
+      "abbrev": "Diabetes",
+      "impact_factor": 6.2
+    },
+    {
+      "title": "The Plant Journal",
+      "abbrev": "Plant J",
+      "impact_factor": 6.2
+    },
+    {
+      "title": "Lab on a Chip",
+      "abbrev": "Lab Chip",
+      "impact_factor": 6.1
+    },
+    {
+      "title": "Annual Review of Genetics",
+      "abbrev": "Annu Rev Genet",
+      "impact_factor": 6.0
+    },
+    {
+      "title": "Stem Cell Reports",
+      "abbrev": "Stem Cell Reports",
+      "impact_factor": 5.9
+    },
+    {
+      "title": "Frontiers in Immunology",
+      "abbrev": "Front Immunol",
+      "impact_factor": 5.7
+    },
+    {
+      "title": "Journal of Experimental Botany",
+      "abbrev": "J Exp Bot",
+      "impact_factor": 5.6
+    },
+    {
+      "title": "PLoS Pathogens",
+      "abbrev": "PLoS Pathog",
+      "impact_factor": 5.5
+    },
+    {
+      "title": "Molecular Oncology",
+      "abbrev": "Mol Oncol",
+      "impact_factor": 5.4
+    },
+    {
+      "title": "Communications Biology",
+      "abbrev": "Commun Biol",
+      "impact_factor": 5.2
+    },
+    {
+      "title": "mBio",
+      "abbrev": "mBio",
+      "impact_factor": 5.1
+    },
+    {
+      "title": "Journal of Molecular Biology",
+      "abbrev": "J Mol Biol",
+      "impact_factor": 4.7
+    },
+    {
+      "title": "npj Genomic Medicine",
+      "abbrev": "NPJ Genom Med",
+      "impact_factor": 4.7
+    },
+    {
+      "title": "iScience",
+      "abbrev": "iScience",
+      "impact_factor": 4.6
+    },
+    {
+      "title": "Protein Science",
+      "abbrev": "Protein Sci",
+      "impact_factor": 4.5
+    },
+    {
+      "title": "Antiviral Research",
+      "abbrev": "Antiviral Res",
+      "impact_factor": 4.5
+    },
+    {
+      "title": "Vaccine",
+      "abbrev": "Vaccine",
+      "impact_factor": 4.5
+    },
+    {
+      "title": "Bioinformatics",
+      "abbrev": "Bioinformatics",
+      "impact_factor": 4.4
+    },
+    {
+      "title": "BMC Biology",
+      "abbrev": "BMC Biol",
+      "impact_factor": 4.4
+    },
+    {
+      "title": "The Journal of Neuroscience",
+      "abbrev": "J Neurosci",
+      "impact_factor": 4.4
+    },
+    {
+      "title": "Structure",
+      "abbrev": "Structure",
+      "impact_factor": 4.4
+    },
+    {
+      "title": "Cell Reports Methods",
+      "abbrev": "Cell Rep Methods",
+      "impact_factor": 4.3
+    },
+    {
+      "title": "PLoS Genetics",
+      "abbrev": "PLoS Genet",
+      "impact_factor": 4.0
+    },
+    {
+      "title": "Journal of Biological Chemistry",
+      "abbrev": "J Biol Chem",
+      "impact_factor": 4.0
+    },
+    {
+      "title": "Nucleic Acid Therapeutics",
+      "abbrev": "Nucleic Acid Ther",
+      "impact_factor": 4.0
+    },
+    {
+      "title": "Frontiers in Microbiology",
+      "abbrev": "Front Microbiol",
+      "impact_factor": 4.0
+    },
+    {
+      "title": "PLoS Computational Biology",
+      "abbrev": "PLoS Comput Biol",
+      "impact_factor": 3.8
+    },
+    {
+      "title": "Scientific Reports",
+      "abbrev": "Sci Rep",
+      "impact_factor": 3.8
+    },
+    {
+      "title": "ACS Synthetic Biology",
+      "abbrev": "ACS Synth Biol",
+      "impact_factor": 3.7
+    },
+    {
+      "title": "Journal of Immunology",
+      "abbrev": "J Immunol",
+      "impact_factor": 3.6
+    },
+    {
+      "title": "BMC Genomics",
+      "abbrev": "BMC Genomics",
+      "impact_factor": 3.5
+    },
+    {
+      "title": "Development",
+      "abbrev": "Development",
+      "impact_factor": 3.5
+    },
+    {
+      "title": "Frontiers in Oncology",
+      "abbrev": "Front Oncol",
+      "impact_factor": 3.5
+    },
+    {
+      "title": "Life Science Alliance",
+      "abbrev": "Life Sci Alliance",
+      "impact_factor": 3.4
+    },
+    {
+      "title": "Journal of Cell Science",
+      "abbrev": "J Cell Sci",
+      "impact_factor": 3.3
+    },
+    {
+      "title": "Human Molecular Genetics",
+      "abbrev": "Hum Mol Genet",
+      "impact_factor": 3.1
+    },
+    {
+      "title": "Nucleus",
+      "abbrev": "Nucleus",
+      "impact_factor": 3.1
+    },
+    {
+      "title": "Traffic",
+      "abbrev": "Traffic",
+      "impact_factor": 3.0
+    },
+    {
+      "title": "PLoS One",
+      "abbrev": "PLoS One",
+      "impact_factor": 2.9
+    },
+    {
+      "title": "BMC Bioinformatics",
+      "abbrev": "BMC Bioinformatics",
+      "impact_factor": 2.9
+    },
+    {
+      "title": "Molecular Biology of the Cell",
+      "abbrev": "Mol Biol Cell",
+      "impact_factor": 2.9
+    },
+    {
+      "title": "Evolution",
+      "abbrev": "Evolution",
+      "impact_factor": 2.6
+    },
+    {
+      "title": "Cytometry Part A",
+      "abbrev": "Cytometry A",
+      "impact_factor": 2.1
+    },
+    {
+      "title": "Proteins",
+      "abbrev": "Proteins",
+      "impact_factor": 1.9
+    }
+  ]
+}

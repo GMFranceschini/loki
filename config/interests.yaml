@@ -1,0 +1,149 @@
+# ============================================================================
+# Loki — your research interest profile
+# ============================================================================
+# This file controls WHAT gets fetched and HOW it gets ranked.
+# Edit it, then run:  ./loki fetch --backfill 7
+#
+# Each topic has:
+#   name     a label shown in the web UI
+#   weight   relative importance (any positive number; they are normalised)
+#   prose    1-3 sentences describing the topic in natural language.
+#            This is what the embedding model compares abstracts against,
+#            so write it like you would describe your interest to a colleague.
+#            Richer prose = better relevance scores than bare keywords.
+#   pubmed   a PubMed query used to pre-filter what gets downloaded.
+#            Use real PubMed syntax ([tiab], [mesh], AND/OR/NOT).
+# ============================================================================
+
+topics:
+- name: 3D chromatin
+  weight: 1.0
+  prose: |
+    Three-dimensional genome organisation and nuclear architecture. Topologically associating domains, A/B compartments, chromatin loops and loop extrusion by cohesin and CTCF. Enhancer-promoter contacts and how genome folding controls transcription.
+  pubmed: |
+    ("3D genome"[tiab] OR "genome organization"[tiab] OR "genome organisation"[tiab] OR "topologically associating"[tiab] OR TADs[tiab] OR "chromatin loop"[tiab] OR "loop extrusion"[tiab] OR cohesin[tiab] OR CTCF[tiab] OR "nuclear architecture"[tiab] OR "chromatin architecture"[tiab] OR compartmentalization[tiab])
+- name: DNA methylation
+  weight: 0.7
+  prose: |
+    DNA methylation and the epigenome. CpG islands, 5-methylcytosine and 5-hydroxymethylcytosine, bisulfite and enzymatic methylation sequencing, DNMT and TET enzymes. Methylation clocks, imprinting, and methylation changes in development and disease.
+  pubmed: |
+    ("DNA methylation"[tiab] OR methylome[tiab] OR "CpG island"[tiab] OR bisulfite[tiab] OR "5-methylcytosine"[tiab] OR "5-hydroxymethylcytosine"[tiab] OR DNMT1[tiab] OR DNMT3A[tiab] OR DNMT3B[tiab] OR TET2[tiab] OR "methylation clock"[tiab] OR "epigenetic clock"[tiab] OR imprinting[tiab])
+- name: Hi-C
+  weight: 1.0
+  prose: |
+    Chromosome conformation capture technology and its analysis. Hi-C, Micro-C, Capture-C, HiChIP, PLAC-seq and single-cell Hi-C. Contact matrices, loop and domain calling, normalisation, resolution, and using contact maps to scaffold genome assemblies.
+  pubmed: |
+    ("Hi-C"[tiab] OR HiC[tiab] OR "Micro-C"[tiab] OR HiChIP[tiab] OR "Capture-C"[tiab] OR "PLAC-seq"[tiab] OR "chromosome conformation capture"[tiab] OR "4C-seq"[tiab] OR "contact matrix"[tiab] OR "contact map"[tiab])
+- name: Cancer genomics
+  weight: 0.8
+  prose: |
+    Genomic characterisation of tumours. Somatic mutations, driver and passenger genes, mutational signatures, copy number alterations, structural variants and clonal evolution. Tumour sequencing cohorts, intratumour heterogeneity and genome instability in cancer.
+  pubmed: |
+    ("somatic mutation"[tiab] OR "mutational signature"[tiab] OR "driver gene"[tiab] OR "tumor genome"[tiab] OR "tumour genome"[tiab] OR "cancer genome"[tiab] OR "clonal evolution"[tiab] OR "copy number alteration"[tiab] OR "structural variant"[tiab] OR "tumor heterogeneity"[tiab] OR oncogene[tiab])
+- name: Cancer epigenetics
+  weight: 0.9
+  prose: |
+    Epigenetic dysregulation in cancer. Aberrant DNA methylation and promoter hypermethylation of tumour suppressors, histone modification and chromatin remodeller mutations such as SWI/SNF and polycomb. Epigenetic therapy with DNMT and HDAC inhibitors, and epigenetic drivers of tumour plasticity.
+  pubmed: |
+    ("cancer epigenetics"[tiab] OR "epigenetic therapy"[tiab] OR hypermethylation[tiab] OR "histone modification"[tiab] AND cancer[tiab] OR "chromatin remodeling"[tiab] AND cancer[tiab] OR "SWI/SNF"[tiab] OR polycomb[tiab] OR EZH2[tiab] OR ARID1A[tiab] OR "HDAC inhibitor"[tiab] OR "DNMT inhibitor"[tiab])
+scoring:
+  # Final score = relevance_weight * relevance + impact_weight * impact
+  # Both components are on a 0-1 scale. These two should sum to 1.0.
+  relevance_weight: 0.7
+  impact_weight: 0.3
+
+  # Topic similarity is squashed from [sim_floor, sim_ceiling] onto [0, 1].
+  # These apply to BACKGROUND-CENTRED similarity, which runs lower than raw
+  # cosine: on a real corpus the median lands near 0.15 and a strongly
+  # on-topic paper near 0.40. Raise sim_floor to be stricter.
+  sim_floor: 0.10
+  sim_ceiling: 0.40
+
+  # A paper's relevance is dominated by its single best-matching topic, with a
+  # smaller bonus for matching several topics at once.
+  best_topic_share: 0.8
+
+  # How much a topic's NAME counts in its embedding, against its description.
+  # The name is short but exact ("Hi-C"); the description is long but diffuse.
+  # Raise it if your topic names are precise technical terms.
+  topic_name_weight: 0.35
+
+  # --- Tagging -------------------------------------------------------------
+  # Tags are the topic labels shown on each paper. A paper can carry several
+  # tags, or none: a paper with no confident match is still ranked, just not
+  # labelled. That is more honest than attaching the least-bad topic.
+  #
+  # tag_min_sim   absolute floor. Raise it for fewer, surer tags.
+  # tag_relative  a second tag must reach this share of the best tag's score.
+  #               1.0 means only ever one tag; 0.5 means tag generously.
+  tag_min_sim: 0.20
+  tag_relative: 0.80
+  max_tags: 3
+
+  # Papers scoring below this are stored but never shown in the top lists.
+  min_relevance: 0.15
+
+  # Each digest window is widened by this many days on BOTH sides. A paper
+  # worth reading today was often posted or indexed a few days earlier, and
+  # journals backdate, so a strict calendar day is too tight a net.
+  # With 10: the day list spans 21 days, the week 27, the month 50.
+  # Set to 0 for strict calendar windows.
+  window_padding_days: 10
+
+  # Impact factors are log-compressed: a journal at or above this IF scores 1.0.
+  impact_factor_cap: 60.0
+
+  # Preprints have no impact factor. This is the flat impact score they get,
+  # equivalent to a journal with an IF of roughly 6.
+  preprint_impact: 0.33
+
+  # Journals absent from config/journals.json get this impact score.
+  unknown_journal_impact: 0.20
+
+# ----------------------------------------------------------------------------
+# Sources
+# ----------------------------------------------------------------------------
+sources:
+  pubmed:
+    enabled: true
+    # Max records to download per topic, per fetch run.
+    max_per_topic: 200
+    # Your email goes in the API User-Agent. NCBI asks for this so they can
+    # contact heavy users. Leave blank to send a generic client name instead.
+    contact_email: ""
+    # Optional NCBI API key raises the rate limit from 3 to 10 requests/sec.
+    # Prefer the NCBI_API_KEY environment variable over putting it here.
+    api_key: ""
+
+  biorxiv:
+    enabled: true
+    servers: [biorxiv, medrxiv]
+    # Preprint servers have no keyword search, so Loki downloads everything in
+    # the date range and relies on embedding relevance to filter it.
+    # Restrict to these categories, or leave empty for all of them.
+    categories: []
+    max_per_run: 3000
+
+# ----------------------------------------------------------------------------
+# Summaries
+# ----------------------------------------------------------------------------
+# Expanding a card shows a compact version of the abstract. It is extractive:
+# the most informative sentences already in the abstract, stitched back
+# together in their original order. Nothing is paraphrased or invented.
+#
+# For labelled abstracts (BACKGROUND / METHODS / RESULTS / CONCLUSIONS) the
+# results and conclusions are used. For unlabelled ones, sentences are ranked
+# on how central they are, how much they read like a finding, and position.
+summary:
+  enabled: true
+  max_sentences: 3
+  max_chars: 420
+
+# ----------------------------------------------------------------------------
+# Embeddings
+# ----------------------------------------------------------------------------
+embedding:
+  # "model2vec"  fast static embeddings, CPU only, no network after first run
+  # "hashing"    pure-numpy lexical fallback, no model download at all
+  backend: model2vec
+  model: minishlab/potion-base-8M

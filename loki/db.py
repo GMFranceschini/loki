@@ -18,7 +18,9 @@ CREATE TABLE IF NOT EXISTS papers (
     doi           TEXT,
     title         TEXT NOT NULL,
     abstract      TEXT,
-    summary       TEXT,                   -- compact version of the abstract
+    summary       TEXT,                   -- legacy: the old extracted summary.
+                                          -- No longer written or served; kept so
+                                          -- existing databases need no migration.
     journal       TEXT,                   -- NULL for preprints
     journal_abbrev TEXT,
     issn          TEXT,
@@ -66,7 +68,7 @@ CREATE TABLE IF NOT EXISTS meta (
 
 # Papers whose combined score is this good are surfaced even outside the top 10.
 PAPER_COLUMNS = (
-    "id, source, ext_id, doi, title, abstract, summary, journal, journal_abbrev, issn, "
+    "id, source, ext_id, doi, title, abstract, journal, journal_abbrev, issn, "
     "authors, url, is_preprint, published_on, pub_date, first_seen_at, "
     "relevance, impact, impact_factor, score, top_topic, tags, topic_scores"
 )
@@ -132,12 +134,12 @@ def upsert_papers(conn: sqlite3.Connection, records: Iterable[dict[str, Any]]) -
     inserted = updated = 0
     sql_insert = """
         INSERT INTO papers (
-            source, ext_id, doi, title, abstract, summary, journal, journal_abbrev, issn,
+            source, ext_id, doi, title, abstract, journal, journal_abbrev, issn,
             authors, url, is_preprint, published_on, pub_date, first_seen_at,
             relevance, impact, impact_factor, score, top_topic, tags,
             topic_scores, scored_with
         ) VALUES (
-            :source, :ext_id, :doi, :title, :abstract, :summary, :journal, :journal_abbrev,
+            :source, :ext_id, :doi, :title, :abstract, :journal, :journal_abbrev,
             :issn, :authors, :url, :is_preprint, :published_on, :pub_date,
             :first_seen_at, :relevance, :impact, :impact_factor, :score,
             :top_topic, :tags, :topic_scores, :scored_with
@@ -146,7 +148,6 @@ def upsert_papers(conn: sqlite3.Connection, records: Iterable[dict[str, Any]]) -
             doi           = COALESCE(excluded.doi, papers.doi),
             title         = excluded.title,
             abstract      = COALESCE(excluded.abstract, papers.abstract),
-            summary       = COALESCE(excluded.summary, papers.summary),
             journal       = COALESCE(excluded.journal, papers.journal),
             journal_abbrev = COALESCE(excluded.journal_abbrev, papers.journal_abbrev),
             issn          = COALESCE(excluded.issn, papers.issn),
@@ -167,7 +168,7 @@ def upsert_papers(conn: sqlite3.Connection, records: Iterable[dict[str, Any]]) -
     for rec in records:
         row = dict(rec)
         row.setdefault("first_seen_at", now)
-        for optional in ("doi", "abstract", "summary", "journal", "journal_abbrev", "issn",
+        for optional in ("doi", "abstract", "journal", "journal_abbrev", "issn",
                          "url", "pub_date", "impact_factor", "top_topic"):
             row.setdefault(optional, None)
         if isinstance(row.get("authors"), (list, tuple)):
@@ -242,7 +243,7 @@ def count_in_window(conn: sqlite3.Connection, start: date, end: date, min_releva
 def iter_all_papers(conn: sqlite3.Connection, batch: int = 500) -> Iterator[list[sqlite3.Row]]:
     """Stream every stored paper, for rescoring."""
     cur = conn.execute(
-        "SELECT id, title, abstract, summary, journal, journal_abbrev, issn, is_preprint "
+        "SELECT id, title, abstract, journal, journal_abbrev, issn, is_preprint "
         "FROM papers"
     )
     while rows := cur.fetchmany(batch):
@@ -258,7 +259,6 @@ def apply_scores(conn: sqlite3.Connection, scored: Iterable[dict[str, Any]]) -> 
             s["score"],
             s.get("top_topic"),
             json.dumps(s.get("tags") or []),
-            s.get("summary"),
             json.dumps(s.get("topic_scores") or {}),
             s["scored_with"],
             s["id"],
@@ -267,7 +267,7 @@ def apply_scores(conn: sqlite3.Connection, scored: Iterable[dict[str, Any]]) -> 
     ]
     conn.executemany(
         "UPDATE papers SET relevance = ?, impact = ?, impact_factor = ?, score = ?, "
-        "top_topic = ?, tags = ?, summary = COALESCE(?, summary), topic_scores = ?, "
+        "top_topic = ?, tags = ?, topic_scores = ?, "
         "scored_with = ? WHERE id = ?",
         rows,
     )

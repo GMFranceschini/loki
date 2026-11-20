@@ -8,7 +8,6 @@ from typing import Any, Sequence
 import numpy as np
 
 from ..config import Config
-from ..summarize import summarize
 from .embed import Embedder, get_embedder, _l2_normalise
 from .impact import JournalIndex, impact_score
 
@@ -43,7 +42,6 @@ class Scorer:
     ):
         self.config = config
         self.scoring = config.scoring
-        self.summary_config = config.summary
         self.embedder = embedder or get_embedder(
             config.embedding.backend, config.embedding.model
         )
@@ -181,26 +179,6 @@ class Scorer:
         )
 
     # ---------------------------------------------------------------- combined
-
-    # ---------------------------------------------------------------- summary
-
-    def summarize(self, abstract: str | None, title: str | None = None) -> str | None:
-        """Compact an abstract down to its findings, for the expanded card."""
-        if not self.summary_config.enabled:
-            return None
-        try:
-            return summarize(
-                abstract,
-                title,
-                embedder=self.embedder,
-                max_sentences=self.summary_config.max_sentences,
-                max_chars=self.summary_config.max_chars,
-            )
-        except Exception:
-            # A summary is a convenience: never let it fail a whole fetch.
-            log.warning("Could not summarise %r", (title or "")[:60], exc_info=True)
-            return None
-
     def combine(self, relevance: float, impact: float) -> float:
         w_rel = self.scoring.relevance_weight
         w_imp = self.scoring.impact_weight
@@ -232,7 +210,6 @@ class Scorer:
             rec["score"] = round(self.combine(float(rel), float(imp)), 4)
             rec["top_topic"] = topic
             rec["tags"] = tag_list
-            rec["summary"] = self.summarize(rec.get("abstract"), rec.get("title"))
             rec["topic_scores"] = sims
             rec["scored_with"] = self.fingerprint
         return records

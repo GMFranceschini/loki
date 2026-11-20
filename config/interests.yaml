@@ -131,21 +131,6 @@ sources:
     max_per_run: 3000
 
 # ----------------------------------------------------------------------------
-# Summaries
-# ----------------------------------------------------------------------------
-# Expanding a card shows a compact version of the abstract. It is extractive:
-# the most informative sentences already in the abstract, stitched back
-# together in their original order. Nothing is paraphrased or invented.
-#
-# For labelled abstracts (BACKGROUND / METHODS / RESULTS / CONCLUSIONS) the
-# results and conclusions are used. For unlabelled ones, sentences are ranked
-# on how central they are, how much they read like a finding, and position.
-summary:
-  enabled: true
-  max_sentences: 3
-  max_chars: 420
-
-# ----------------------------------------------------------------------------
 # Embeddings
 # ----------------------------------------------------------------------------
 embedding:

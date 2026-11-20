@@ -203,20 +203,10 @@ def fetch_and_rescore(
     return summary
 
 
-def rescore_all(
-    config: Config | None = None,
-    scorer: Scorer | None = None,
-    resummarize: bool = False,
-) -> int:
+def rescore_all(config: Config | None = None, scorer: Scorer | None = None) -> int:
     """Recompute relevance, impact and score for every stored paper.
 
     Run this after editing interests.yaml or journals.json.
-
-    A paper's summary is normally left alone: summarising re-embeds every
-    sentence of every abstract, which is far slower than rescoring, and the
-    summary does not depend on the topics or the journal table. Pass
-    resummarize=True after changing the `summary:` settings, which is the one
-    case where the stored summaries really are stale.
     """
     config = config or load_config()
     from .scoring.score import paper_text
@@ -243,12 +233,6 @@ def rescore_all(
                         "score": round(scorer.combine(float(rel), float(imp)), 4),
                         "top_topic": topic,
                         "tags": tag_list,
-                        "summary": (
-                            scorer.summarize(row["abstract"], row["title"])
-                            if resummarize
-                            else row["summary"]
-                            or scorer.summarize(row["abstract"], row["title"])
-                        ),
                         "topic_scores": topic_sims,
                         "scored_with": scorer.fingerprint,
                     }

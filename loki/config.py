@@ -96,15 +96,6 @@ class BioRxivConfig:
 
 
 @dataclass(frozen=True)
-class SummaryConfig:
-    """Settings for the compact summary shown when a card is expanded."""
-
-    enabled: bool = True
-    max_sentences: int = 3
-    max_chars: int = 420
-
-
-@dataclass(frozen=True)
 class EmbeddingConfig:
     backend: str = "model2vec"
     model: str = "minishlab/potion-base-8M"
@@ -117,7 +108,6 @@ class Config:
     pubmed: PubMedConfig = field(default_factory=PubMedConfig)
     biorxiv: BioRxivConfig = field(default_factory=BioRxivConfig)
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
-    summary: SummaryConfig = field(default_factory=SummaryConfig)
 
     @property
     def topic_names(self) -> list[str]:
@@ -130,7 +120,6 @@ class Config:
 
         payload = "|".join(f"{t.name}:{t.weight}:{t.prose}" for t in self.topics)
         payload += "||" + repr(self.scoring) + "||" + repr(self.embedding)
-        payload += "||" + repr(self.summary)
         return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
@@ -268,7 +257,6 @@ def load_config(path=None) -> Config:
         pubmed=_build(PubMedConfig, _subdict(raw, "sources", "pubmed")),
         biorxiv=_build(BioRxivConfig, _subdict(raw, "sources", "biorxiv")),
         embedding=_build(EmbeddingConfig, _subdict(raw, "embedding")),
-        summary=_build(SummaryConfig, _subdict(raw, "summary")),
     )
 
 

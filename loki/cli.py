@@ -61,9 +61,8 @@ def cmd_fetch(args) -> int:
 def cmd_rescore(args) -> int:
     from .pipeline import rescore_all
 
-    total = rescore_all(load_config(), resummarize=args.summaries)
-    what = "and resummarised " if args.summaries else ""
-    print(f"Rescored {what}{total} papers")
+    total = rescore_all(load_config())
+    print(f"Rescored {total} papers")
     return 0
 
 
@@ -332,11 +331,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_rescore = sub.add_parser(
         "rescore", help="recompute scores after editing interests.yaml or journals.json"
-    )
-    p_rescore.add_argument(
-        "--summaries",
-        action="store_true",
-        help="also rebuild every stored summary, after changing the summary settings",
     )
     p_rescore.set_defaults(func=cmd_rescore)
 

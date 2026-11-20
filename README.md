@@ -27,8 +27,7 @@ bin/loki serve      # then open http://127.0.0.1:8713
 2. **Scores** each one on topic relevance and journal impact.
 3. **Ranks** them into three digests: day, week and month, each reaching a
    few days further back so nothing is missed at the edge.
-4. **Summarises** each abstract down to its findings.
-5. **Serves** them at `http://127.0.0.1:8713`, where you can also edit your topics.
+4. **Serves** them at `http://127.0.0.1:8713`, where you can also edit your topics.
 
 ---
 
@@ -164,7 +163,6 @@ bin/loki fetch                  # fetch now (the schedule does this for you)
 bin/loki fetch --backfill 14    # fill in the last two weeks
 bin/loki status                 # is the server running?
 bin/loki stop                   # stop the server
-bin/loki rescore --summaries    # rebuild summaries after changing summary settings
 bin/loki stats                  # what is stored
 bin/loki doctor                 # health check
 ```
@@ -338,42 +336,6 @@ Retractions, errata, corrigenda, editorials, comments and similar notices are
 dropped at parse time. They carry a journal's full prestige but no science, so
 a retraction notice in a high-impact journal would otherwise outrank real work.
 
-### Summaries
-
-Expanding a card shows a compact version of the abstract — about a quarter of
-the length, carrying the findings rather than the scene-setting. Press **Show
-full abstract** for the original.
-
-Summaries are **extractive**: the most informative sentences already in the
-abstract, put back in their original order. Nothing is paraphrased, reworded or
-invented, which matters here — a confidently wrong paraphrase of a result is
-worse than no summary at all. No model is called and nothing leaves your Mac.
-
-Two strategies, picked per paper:
-
-- **Labelled abstracts** (BACKGROUND / METHODS / RESULTS / CONCLUSIONS — about
-  a quarter of PubMed records) use the conclusions and results directly.
-- **Unlabelled abstracts** rank sentences on how central they are to the
-  abstract, how much they read like a finding rather than background, and where
-  they sit, since the conclusion usually comes last.
-
-An abstract already shorter than `max_chars` is shown unchanged, because
-compacting it would only lose information.
-
-```yaml
-summary:
-  enabled: true        # false turns the feature off entirely
-  max_sentences: 3
-  max_chars: 420
-```
-
-Summaries are computed when papers are scored and stored alongside them, so
-expanding a card is instant and works offline. They are written once and then
-left alone: a plain `bin/loki rescore` will not touch them, because summarising
-re-embeds every sentence of every abstract and the result does not depend on
-your topics. After changing the settings above, run `bin/loki rescore
---summaries` to rebuild them.
-
 ### The digest windows
 
 Each window **ends at the reference date** and reaches `window_padding_days`
@@ -436,8 +398,6 @@ Everything below is in `config/interests.yaml`.
 | Too many papers tagged with everything | Raise `tag_relative` towards 1.0, or raise `tag_min_sim`. |
 | Too many papers show "no clear topic" | Lower `tag_min_sim` (0.20 → 0.15). |
 | Day list is too wide or too narrow | Change `window_padding_days`, which can be set per window. |
-| Summaries are too short or too long | Change `summary.max_sentences` / `max_chars`, then `bin/loki rescore --summaries`. A plain `rescore` leaves stored summaries alone, because rebuilding them is far slower than rescoring and they do not depend on your topics. |
-| A summary reads like background, not findings | The abstract buried its result mid-text. Raise `max_sentences`, or open the full abstract. |
 
 After any change: `bin/loki rescore` (or **Save & rescore** in the UI).
 
@@ -450,7 +410,7 @@ Loki is a local program. It has no account, no telemetry and no cloud component.
 **What leaves your Mac.** Only the queries themselves: your PubMed search
 strings go to NCBI, and bioRxiv/medRxiv are asked for each day's postings. Your
 topic prose, your database and your reading are never uploaded. Scoring,
-tagging and summarising all run locally — the embedding model is downloaded
+and tagging all run locally — the embedding model is downloaded
 once and then used offline, and no language model is called at any point.
 
 **Your contact details.** `sources.pubmed.contact_email` is blank by default
@@ -527,7 +487,6 @@ third-party or emoji artwork.
 ├── loki/                     the Python package
 │   ├── sources/              PubMed and bioRxiv fetchers
 │   ├── scoring/              embeddings, impact lookup, combination
-│   ├── summarize.py          compacts abstracts down to their findings
 │   ├── pipeline.py           fetch → score → store
 │   ├── server.py             the JSON API
 │   └── cli.py                the command line
@@ -538,7 +497,7 @@ third-party or emoji artwork.
 │   ├── build_app.sh          builds Loki.app
 │   ├── make_icon.sh          rebuilds icon.png and loki.icns from icon.svg
 │   └── svg2png.swift         the fallback SVG rasteriser make_icon.sh uses
-└── tests/                    152 tests: bin/loki is not needed, use pytest
+└── tests/                    136 tests: bin/loki is not needed, use pytest
 ```
 
 Your data is just a SQLite file. Query it directly whenever you want:
@@ -569,8 +528,8 @@ sqlite3 data/loki.db \
 .venv/bin/python -m pytest tests/ -q
 ```
 
-152 tests, no network needed: the scoring, tagging and summary tests use the
-offline hashing embedder and the API tests run against a temporary database.
+136 tests, no network needed: the scoring and tagging tests use the offline
+hashing embedder and the API tests run against a temporary database.
 
 ---
 

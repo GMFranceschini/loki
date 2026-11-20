@@ -99,6 +99,21 @@ function formatDate(iso) {
 
 /* ------------------------------------------------------------------ render */
 
+const TAG_COLOURS = 16;
+
+/* One of sixteen palette classes per topic, chosen by hashing the name. The
+   colour is arbitrary but stable: the same topic looks the same on every card
+   and after a reload, which is what makes the colours worth scanning. FNV-1a
+   keeps names that differ by one letter well apart. */
+function tagColour(name) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < name.length; i += 1) {
+    hash ^= name.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `tag-${hash % TAG_COLOURS}`;
+}
+
 function renderPaper(paper, rank) {
   const li = document.createElement("li");
   li.className = "paper";
@@ -118,7 +133,7 @@ function renderPaper(paper, rank) {
     ? paper.tags
     : (paper.top_topic ? [paper.top_topic] : []);
   tags.forEach((tag) => {
-    badges.push(`<span class="badge topic">${escapeHTML(tag)}</span>`);
+    badges.push(`<span class="badge topic ${tagColour(tag)}">${escapeHTML(tag)}</span>`);
   });
   if (tags.length === 0) {
     // Saying nothing matched is more honest than showing the least-bad topic.

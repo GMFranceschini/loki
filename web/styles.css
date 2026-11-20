@@ -524,27 +524,6 @@ main { max-width: 940px; margin: 0 auto; padding: 22px 24px 40px; }
 
 .expanded { margin-top: 10px; }
 
-.summary {
-  margin: 0;
-  padding: 11px 13px;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--text);
-  background: var(--surface-2);
-  border-left: 3px solid var(--accent);
-  border-radius: 0 8px 8px 0;
-}
-
-.abstract-more {
-  font: inherit;
-  font-size: 12px;
-  background: none;
-  border: none;
-  color: var(--accent);
-  cursor: pointer;
-  padding: 7px 0 0;
-}
-
 .expanded .abstract {
   margin-top: 7px;
   border: 1px solid var(--border);

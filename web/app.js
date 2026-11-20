@@ -115,8 +115,7 @@ function renderPaper(paper, rank) {
   const rel = Math.round((paper.relevance ?? 0) * 100);
   const imp = Math.round((paper.impact ?? 0) * 100);
   const abstract = paper.abstract || "";
-  const summary = paper.summary || "";
-  const expandable = Boolean(summary || abstract);
+  const expandable = Boolean(abstract);
 
   li.innerHTML = `
     <div class="rank">${rank}</div>
@@ -143,7 +142,7 @@ function renderPaper(paper, rank) {
             <div class="bar-track"><div class="bar-fill imp" style="width:${imp}%"></div></div>
           </div>
         </div>
-        ${expandable ? '<button class="abstract-toggle" type="button" aria-expanded="false">Summary</button>' : ""}
+        ${expandable ? '<button class="abstract-toggle" type="button" aria-expanded="false">Abstract</button>' : ""}
       </div>
     </div>
   `;
@@ -155,7 +154,7 @@ function renderPaper(paper, rank) {
 
     const close = () => {
       li.querySelector(".expanded")?.remove();
-      toggle.textContent = "Summary";
+      toggle.textContent = "Abstract";
       toggle.setAttribute("aria-expanded", "false");
     };
 
@@ -163,34 +162,12 @@ function renderPaper(paper, rank) {
       const panel = document.createElement("div");
       panel.className = "expanded";
 
-      // The compact summary is what the card shows first. The full abstract
-      // stays one click further away, so the card does not become a wall.
-      const lead = document.createElement("p");
-      lead.className = "summary";
-      lead.textContent = summary || abstract;
-      panel.appendChild(lead);
-
-      if (abstract && summary && abstract !== summary) {
-        const more = document.createElement("button");
-        more.type = "button";
-        more.className = "abstract-more";
-        more.textContent = "Show full abstract";
-        let full = null;
-        more.addEventListener("click", () => {
-          if (full) {
-            full.remove();
-            full = null;
-            more.textContent = "Show full abstract";
-            return;
-          }
-          full = document.createElement("p");
-          full.className = "abstract";
-          full.textContent = abstract;
-          panel.appendChild(full);
-          more.textContent = "Hide full abstract";
-        });
-        panel.appendChild(more);
-      }
+      // The abstract as the publisher wrote it. textContent, not innerHTML:
+      // this string comes from PubMed and bioRxiv and is not ours to trust.
+      const full = document.createElement("p");
+      full.className = "abstract";
+      full.textContent = abstract;
+      panel.appendChild(full);
 
       body.appendChild(panel);
       toggle.textContent = "Hide";

@@ -264,18 +264,23 @@ BASE_WINDOW_DAYS = {"day": 1, "week": 7, "month": 30}
 
 
 def windows(reference: date, padding_days: int = 0) -> dict[str, tuple[date, date]]:
-    """The three digest windows around a reference date.
+    """The three digest windows, each ending at the reference date.
 
-    Each window is widened by `padding_days` on both sides. A paper worth
-    reading today was often posted or indexed a few days earlier, and
-    journals backdate, so a strict calendar day is too tight a net. The
-    windows stay nested: whatever is in the day list is also in the week
+    A window reaches `padding_days` further back than its nominal length. A
+    paper worth reading today was often posted or indexed a few days earlier,
+    and journals backdate, so a strict calendar day is too tight a net.
+
+    The padding only reaches backwards. Nothing is published after the
+    reference date, so widening a window forwards asks for papers from the
+    future: it can only ever return records whose date is wrong.
+
+    The windows stay nested: whatever is in the day list is also in the week
     and month lists.
     """
     pad = timedelta(days=max(0, padding_days))
     spans: dict[str, tuple[date, date]] = {}
     for name, length in BASE_WINDOW_DAYS.items():
-        spans[name] = (reference - timedelta(days=length - 1) - pad, reference + pad)
+        spans[name] = (reference - timedelta(days=length - 1) - pad, reference)
     return spans
 
 

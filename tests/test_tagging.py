@@ -134,11 +134,20 @@ def test_name_weight_of_zero_uses_prose_only(config):
 # ---------------------------------------------------------------- windows
 
 
-def test_padding_widens_both_sides():
+def test_padding_only_reaches_backwards():
     reference = date(2026, 11, 17)
     start, end = windows(reference, 10)["day"]
     assert start == date(2026, 11, 7)
-    assert end == date(2026, 11, 27)
+    assert end == reference
+
+
+def test_no_window_ends_after_the_reference_date():
+    """Nothing is published after today, so no window may ask for it."""
+    reference = date(2026, 11, 17)
+    for pad in (0, 1, 10, 90):
+        for name, (start, end) in windows(reference, pad).items():
+            assert end == reference, f"{name} with padding {pad} ran past the reference"
+            assert start <= reference
 
 
 def test_zero_padding_restores_strict_windows():
@@ -158,7 +167,7 @@ def test_padded_window_lengths():
     spans = windows(date(2026, 11, 17), 10)
     for name, base in BASE_WINDOW_DAYS.items():
         start, end = spans[name]
-        assert (end - start).days + 1 == base + 20
+        assert (end - start).days + 1 == base + 10
 
 
 def test_negative_padding_is_treated_as_zero():

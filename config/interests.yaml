@@ -83,10 +83,12 @@ scoring:
   # Papers scoring below this are stored but never shown in the top lists.
   min_relevance: 0.15
 
-  # Each digest window is widened by this many days on BOTH sides. A paper
-  # worth reading today was often posted or indexed a few days earlier, and
-  # journals backdate, so a strict calendar day is too tight a net.
-  # With 10: the day list spans 21 days, the week 27, the month 50.
+  # Each digest window reaches this many days FURTHER BACK than its nominal
+  # length. A paper worth reading today was often posted or indexed a few days
+  # earlier, and journals backdate, so a strict calendar day is too tight a net.
+  # The padding is backwards only: a window always ends at the reference date,
+  # because nothing is published after it.
+  # With 10: the day list spans 11 days, the week 17, the month 40.
   # Set to 0 for strict calendar windows.
   window_padding_days: 10
 

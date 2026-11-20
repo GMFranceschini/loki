@@ -25,8 +25,8 @@ bin/loki serve      # then open http://127.0.0.1:8713
 
 1. **Fetches** new papers once a day from PubMed, bioRxiv and medRxiv.
 2. **Scores** each one on topic relevance and journal impact.
-3. **Ranks** them into three digests: day, week and month, each widened by
-   ±10 days so nothing is missed at the edges.
+3. **Ranks** them into three digests: day, week and month, each reaching 10
+   days further back so nothing is missed at the edge.
 4. **Summarises** each abstract down to its findings.
 5. **Serves** them at `http://127.0.0.1:8713`, where you can also edit your topics.
 
@@ -376,15 +376,19 @@ your topics. After changing the settings above, run `bin/loki rescore
 
 ### The digest windows
 
-Each window is widened by `window_padding_days` (10) on both sides, because a
-paper worth reading now was often posted or indexed a few days earlier, and
-journals backdate:
+Each window **ends at the reference date** and reaches `window_padding_days`
+(10) further back than its nominal length, because a paper worth reading now
+was often posted or indexed a few days earlier, and journals backdate:
 
-| Tab | Base | Actual span with ±10 days |
+| Tab | Base | Actual span with 10 days of padding |
 |---|---|---|
-| Day | 1 day | 21 days |
-| Week | 7 days | 27 days |
-| Month | 30 days | 50 days |
+| Day | 1 day | 11 days |
+| Week | 7 days | 17 days |
+| Month | 30 days | 40 days |
+
+The padding only reaches backwards. Nothing is published after the reference
+date, so extending a window forwards would be asking for papers from the
+future: it can only ever match a record whose date is wrong.
 
 The windows stay nested, so anything in the day list also appears in the week
 and month lists. Set `window_padding_days: 0` for strict calendar windows.

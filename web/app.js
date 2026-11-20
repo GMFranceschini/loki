@@ -235,7 +235,7 @@ function render() {
   const papers = applyFilters(digest.papers || []);
   const pad = digest.padding_days || 0;
   const base = { day: "day", week: "week", month: "month" }[state.window];
-  const padNote = pad ? ` (${base} ±${pad}d)` : ` (${base})`;
+  const padNote = pad ? ` (${base} +${pad}d back)` : ` (${base})`;
   el.summary.textContent =
     `${digest.from} → ${digest.to}${padNote} · ` +
     `${digest.considered} papers cleared the relevance threshold · showing ${papers.length}`;

@@ -50,9 +50,11 @@ class Scoring:
     preprint_impact: float = 0.33
     unknown_journal_impact: float = 0.20
 
-    # Digest windows are widened by this many days on both sides, because a
-    # paper worth reading today was often posted or indexed a little earlier,
-    # and journals backdate. 0 restores strict calendar windows.
+    # Digest windows reach this many days further back than their nominal
+    # length, because a paper worth reading today was often posted or indexed
+    # a little earlier, and journals backdate. The padding is backwards only:
+    # a window never ends after the reference date. 0 restores strict
+    # calendar windows.
     window_padding_days: int = 10
 
 

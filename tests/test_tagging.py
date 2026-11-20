@@ -173,3 +173,24 @@ def test_padded_window_lengths():
 def test_negative_padding_is_treated_as_zero():
     reference = date(2026, 11, 17)
     assert windows(reference, -5)["day"] == (reference, reference)
+
+
+def test_padding_can_differ_per_window():
+    reference = date(2026, 11, 17)
+    spans = windows(reference, {"day": 5, "week": 10, "month": 10})
+    assert spans["day"] == (date(2026, 11, 12), reference)       # 1 + 5
+    assert spans["week"] == (date(2026, 11, 1), reference)       # 7 + 10
+    assert spans["month"] == (date(2026, 10, 9), reference)      # 30 + 10
+
+
+def test_a_window_missing_from_the_mapping_gets_no_padding():
+    reference = date(2026, 11, 17)
+    assert windows(reference, {"week": 10})["day"] == (reference, reference)
+
+
+def test_per_window_padding_cannot_break_nesting():
+    """A heavily padded day would otherwise reach outside its own week."""
+    spans = windows(date(2026, 11, 17), {"day": 50, "week": 0, "month": 0})
+    day, week, month = spans["day"], spans["week"], spans["month"]
+    assert week[0] <= day[0] and week[1] >= day[1]
+    assert month[0] <= week[0] and month[1] >= week[1]

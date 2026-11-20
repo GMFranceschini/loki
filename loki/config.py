@@ -55,7 +55,25 @@ class Scoring:
     # a little earlier, and journals backdate. The padding is backwards only:
     # a window never ends after the reference date. 0 restores strict
     # calendar windows.
+    #
+    # window_padding_days is the figure used for any window without its own,
+    # and window_padding holds the per-window overrides, as (name, days)
+    # pairs. Both come from one `window_padding_days:` key in the YAML, which
+    # accepts either a single number or a mapping per window.
     window_padding_days: int = 10
+    window_padding: tuple[tuple[str, int], ...] = ()
+
+
+    def padding_for(self, window: str) -> int:
+        """Days of backward padding for one window."""
+        for name, days in self.window_padding:
+            if name == window:
+                return max(0, days)
+        return max(0, self.window_padding_days)
+
+    @property
+    def padding_by_window(self) -> dict[str, int]:
+        return {w: self.padding_for(w) for w in ("day", "week", "month")}
 
 
 @dataclass(frozen=True)
@@ -114,6 +132,56 @@ class Config:
         payload += "||" + repr(self.scoring) + "||" + repr(self.embedding)
         payload += "||" + repr(self.summary)
         return hashlib.sha256(payload.encode()).hexdigest()[:16]
+
+
+WINDOW_NAMES = ("day", "week", "month")
+
+
+def _parse_padding(value: Any) -> tuple[int, tuple[tuple[str, int], ...]]:
+    """Read `window_padding_days`, which may be one number or a mapping.
+
+        window_padding_days: 10           every window reaches 10 days back
+        window_padding_days:              the day list reaches 5, the rest 10
+          day: 5
+          week: 10
+          month: 10
+
+    Returns (default, per-window overrides).
+    """
+
+    def days_from(raw: Any, where: str) -> int:
+        try:
+            days = int(raw)
+        except (TypeError, ValueError):
+            raise ConfigError(f"{where} must be a whole number of days") from None
+        if days < 0:
+            raise ConfigError(
+                f"{where} cannot be negative. Windows only ever reach backwards, "
+                "so the padding is already a number of days into the past."
+            )
+        return days
+
+    if value is None:
+        return 10, ()
+
+    if isinstance(value, dict):
+        default = 0
+        overrides: list[tuple[str, int]] = []
+        for key, raw in value.items():
+            name = str(key).strip().lower()
+            where = f"window_padding_days.{key}"
+            if name in WINDOW_NAMES:
+                overrides.append((name, days_from(raw, where)))
+            elif name in ("all", "default"):
+                default = days_from(raw, where)
+            else:
+                raise ConfigError(
+                    f"window_padding_days has an unknown window {key!r}; "
+                    f"use {', '.join(WINDOW_NAMES)}, or 'default' for the rest"
+                )
+        return default, tuple(overrides)
+
+    return days_from(value, "window_padding_days"), ()
 
 
 def _subdict(raw: dict[str, Any], *path: str) -> dict[str, Any]:
@@ -185,7 +253,11 @@ def load_config(path=None) -> Config:
     if dupes:
         raise ConfigError(f"Duplicate topic names in {path}: {', '.join(sorted(dupes))}")
 
-    scoring = _build(Scoring, _subdict(raw, "scoring"))
+    raw_scoring = dict(_subdict(raw, "scoring"))
+    default_pad, per_window = _parse_padding(raw_scoring.pop("window_padding_days", None))
+    raw_scoring["window_padding_days"] = default_pad
+    raw_scoring["window_padding"] = per_window
+    scoring = _build(Scoring, raw_scoring)
     total_weight = scoring.relevance_weight + scoring.impact_weight
     if total_weight <= 0:
         raise ConfigError("relevance_weight + impact_weight must be above zero")

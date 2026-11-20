@@ -133,7 +133,7 @@ def read_config() -> dict[str, Any]:
             "relevance_weight": cfg.scoring.relevance_weight,
             "impact_weight": cfg.scoring.impact_weight,
             "min_relevance": cfg.scoring.min_relevance,
-            "window_padding_days": cfg.scoring.window_padding_days,
+            "window_padding_days": cfg.scoring.padding_by_window,
             "preprint_impact": cfg.scoring.preprint_impact,
             "impact_factor_cap": cfg.scoring.impact_factor_cap,
         },
@@ -220,7 +220,7 @@ def read_digest(
     with db.session() as conn:
         result = digest(
             conn, window, reference, limit, cfg.scoring.min_relevance,
-            cfg.scoring.window_padding_days,
+            cfg.scoring.padding_by_window,
         )
         result["stats"] = db.stats(conn)
     return result
@@ -241,7 +241,7 @@ def read_all_digests(
             "digests": {
                 w: digest(
                     conn, w, reference, limit, cfg.scoring.min_relevance,
-                    cfg.scoring.window_padding_days,
+                    cfg.scoring.padding_by_window,
                 )
                 for w in WINDOWS
             },
@@ -251,7 +251,7 @@ def read_all_digests(
                 "relevance": cfg.scoring.relevance_weight,
                 "impact": cfg.scoring.impact_weight,
             },
-            "padding_days": cfg.scoring.window_padding_days,
+            "padding_days": cfg.scoring.padding_by_window,
         }
     return payload
 

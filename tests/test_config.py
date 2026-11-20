@@ -174,3 +174,60 @@ def test_save_creates_a_file_that_did_not_exist(tmp_path):
     path = tmp_path / "fresh.yaml"
     save_topics([{"name": "New", "weight": 1.0, "prose": GOOD_PROSE}], path)
     assert load_config(path).topic_names == ["New"]
+
+
+# ---------------------------------------------------------------- padding
+
+
+def test_padding_accepts_a_single_number(tmp_path):
+    from loki.config import _parse_padding
+
+    assert _parse_padding(10) == (10, ())
+
+
+def test_padding_accepts_a_mapping_per_window():
+    from loki.config import _parse_padding
+
+    default, overrides = _parse_padding({"day": 5, "week": 10, "month": 10})
+    assert dict(overrides) == {"day": 5, "week": 10, "month": 10}
+    assert default == 0
+
+
+def test_padding_mapping_supports_a_default():
+    from loki.config import _parse_padding
+
+    default, overrides = _parse_padding({"day": 5, "default": 10})
+    assert default == 10
+    assert dict(overrides) == {"day": 5}
+
+
+def test_padding_rejects_a_negative_number():
+    from loki.config import ConfigError, _parse_padding
+
+    with pytest.raises(ConfigError, match="cannot be negative"):
+        _parse_padding(-5)
+    with pytest.raises(ConfigError, match="cannot be negative"):
+        _parse_padding({"day": -1})
+
+
+def test_padding_rejects_an_unknown_window():
+    from loki.config import ConfigError, _parse_padding
+
+    with pytest.raises(ConfigError, match="unknown window"):
+        _parse_padding({"fortnight": 14})
+
+
+def test_padding_rejects_nonsense():
+    from loki.config import ConfigError, _parse_padding
+
+    with pytest.raises(ConfigError, match="whole number"):
+        _parse_padding("soon")
+
+
+def test_scoring_reports_padding_per_window():
+    from loki.config import Scoring
+
+    scoring = Scoring(window_padding_days=10, window_padding=(("day", 5),))
+    assert scoring.padding_by_window == {"day": 5, "week": 10, "month": 10}
+    assert scoring.padding_for("day") == 5
+    assert scoring.padding_for("month") == 10

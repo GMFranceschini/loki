@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from . import db
 from .config import Config, load_config
@@ -263,24 +263,44 @@ def rescore_all(
 BASE_WINDOW_DAYS = {"day": 1, "week": 7, "month": 30}
 
 
-def windows(reference: date, padding_days: int = 0) -> dict[str, tuple[date, date]]:
+def windows(
+    reference: date, padding_days: int | Mapping[str, int] = 0
+) -> dict[str, tuple[date, date]]:
     """The three digest windows, each ending at the reference date.
 
     A window reaches `padding_days` further back than its nominal length. A
     paper worth reading today was often posted or indexed a few days earlier,
     and journals backdate, so a strict calendar day is too tight a net.
+    `padding_days` is either one number for every window, or a mapping of
+    window name to days, so the day list can be held tighter than the month.
 
     The padding only reaches backwards. Nothing is published after the
     reference date, so widening a window forwards asks for papers from the
     future: it can only ever return records whose date is wrong.
 
     The windows stay nested: whatever is in the day list is also in the week
-    and month lists.
+    and month lists. Per-window padding could break that — a heavily padded
+    day and an unpadded week would cross — so a wider window is pulled back
+    to its neighbour's start rather than allowed to sit inside it.
     """
-    pad = timedelta(days=max(0, padding_days))
+
+    def pad_for(name: str) -> int:
+        value = padding_days.get(name, 0) if isinstance(padding_days, Mapping) else padding_days
+        try:
+            return max(0, int(value))
+        except (TypeError, ValueError):
+            return 0
+
     spans: dict[str, tuple[date, date]] = {}
+    previous_start: date | None = None
+    # BASE_WINDOW_DAYS is ordered shortest first, which is what keeps the
+    # nesting check below a single comparison against the window before.
     for name, length in BASE_WINDOW_DAYS.items():
-        spans[name] = (reference - timedelta(days=length - 1) - pad, reference)
+        start = reference - timedelta(days=length - 1 + pad_for(name))
+        if previous_start is not None and start > previous_start:
+            start = previous_start
+        previous_start = start
+        spans[name] = (start, reference)
     return spans
 
 
@@ -290,7 +310,7 @@ def digest(
     reference: date | None = None,
     limit: int = 10,
     min_relevance: float = 0.0,
-    padding_days: int = 0,
+    padding_days: int | Mapping[str, int] = 0,
 ) -> dict[str, Any]:
     """Top papers for one window."""
     reference = reference or today_utc()
@@ -304,7 +324,9 @@ def digest(
         "from": start.isoformat(),
         "to": end.isoformat(),
         "reference": reference.isoformat(),
-        "padding_days": max(0, padding_days),
+        # Derived from the span rather than the setting, so it still reads
+        # true when nesting pulled this window back further than asked.
+        "padding_days": (end - start).days + 1 - BASE_WINDOW_DAYS[window],
         "base_days": BASE_WINDOW_DAYS[window],
         "considered": db.count_in_window(conn, start, end, min_relevance),
         "count": len(papers),

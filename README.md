@@ -25,8 +25,8 @@ bin/loki serve      # then open http://127.0.0.1:8713
 
 1. **Fetches** new papers once a day from PubMed, bioRxiv and medRxiv.
 2. **Scores** each one on topic relevance and journal impact.
-3. **Ranks** them into three digests: day, week and month, each reaching 10
-   days further back so nothing is missed at the edge.
+3. **Ranks** them into three digests: day, week and month, each reaching a
+   few days further back so nothing is missed at the edge.
 4. **Summarises** each abstract down to its findings.
 5. **Serves** them at `http://127.0.0.1:8713`, where you can also edit your topics.
 
@@ -380,18 +380,37 @@ Each window **ends at the reference date** and reaches `window_padding_days`
 (10) further back than its nominal length, because a paper worth reading now
 was often posted or indexed a few days earlier, and journals backdate:
 
-| Tab | Base | Actual span with 10 days of padding |
-|---|---|---|
-| Day | 1 day | 11 days |
-| Week | 7 days | 17 days |
-| Month | 30 days | 40 days |
+| Tab | Base | Padding | Actual span |
+|---|---|---|---|
+| Day | 1 day | 5 | 6 days |
+| Week | 7 days | 10 | 17 days |
+| Month | 30 days | 10 | 40 days |
 
 The padding only reaches backwards. Nothing is published after the reference
 date, so extending a window forwards would be asking for papers from the
 future: it can only ever match a record whose date is wrong.
 
+`window_padding_days` takes either one number for every window, or a figure
+per window when you want the day list held tighter than the month:
+
+```yaml
+scoring:
+  window_padding_days: 10      # every window
+
+scoring:
+  window_padding_days:         # or one at a time
+    day: 5
+    week: 10
+    month: 10
+```
+
+An unnamed window falls back to `default:` if you give one, and to 0 otherwise.
+Set a window to 0 for a strict calendar window.
+
 The windows stay nested, so anything in the day list also appears in the week
-and month lists. Set `window_padding_days: 0` for strict calendar windows.
+and month lists. Per-window padding could break that — a heavily padded day
+against an unpadded week would cross — so a wider window is pulled back to its
+neighbour's start rather than allowed to sit inside it.
 
 ### Preprint and published version of the same paper
 
@@ -416,7 +435,7 @@ Everything below is in `config/interests.yaml`.
 | Tags look wrong or arbitrary | The topic's description probably describes something other than its name. Rewrite them together. |
 | Too many papers tagged with everything | Raise `tag_relative` towards 1.0, or raise `tag_min_sim`. |
 | Too many papers show "no clear topic" | Lower `tag_min_sim` (0.20 → 0.15). |
-| Day list is too wide or too narrow | Change `window_padding_days`. |
+| Day list is too wide or too narrow | Change `window_padding_days`, which can be set per window. |
 | Summaries are too short or too long | Change `summary.max_sentences` / `max_chars`, then `bin/loki rescore --summaries`. A plain `rescore` leaves stored summaries alone, because rebuilding them is far slower than rescoring and they do not depend on your topics. |
 | A summary reads like background, not findings | The abstract buried its result mid-text. Raise `max_sentences`, or open the full abstract. |
 

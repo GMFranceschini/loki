@@ -79,7 +79,7 @@ def cmd_top(args) -> int:
             reference,
             args.limit,
             config.scoring.min_relevance,
-            config.scoring.window_padding_days,
+            config.scoring.padding_by_window,
         )
 
     if args.json:
@@ -89,7 +89,7 @@ def cmd_top(args) -> int:
     pad = result.get("padding_days", 0)
     span = f"{result['from']} to {result['to']}"
     header = f"Top {result['count']} — {args.window}" + (
-        f" ±{pad}d ({span})" if pad else f" ({span})"
+        f" +{pad}d back ({span})" if pad else f" ({span})"
     )
     print(f"\n{header}\n{'=' * len(header)}")
     if not result["papers"]:

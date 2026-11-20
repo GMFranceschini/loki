@@ -88,9 +88,13 @@ scoring:
   # earlier, and journals backdate, so a strict calendar day is too tight a net.
   # The padding is backwards only: a window always ends at the reference date,
   # because nothing is published after it.
-  # With 10: the day list spans 11 days, the week 17, the month 40.
-  # Set to 0 for strict calendar windows.
-  window_padding_days: 10
+  # Give every window the same figure, or name them separately as below.
+  # With day 5 and the rest 10: the day list spans 6 days, the week 17,
+  # the month 40. Set a window to 0 for a strict calendar window.
+  window_padding_days:
+    day: 5
+    week: 10
+    month: 10
 
   # Impact factors are log-compressed: a journal at or above this IF scores 1.0.
   impact_factor_cap: 60.0

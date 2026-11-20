@@ -562,6 +562,7 @@ offline hashing embedder and the API tests run against a temporary database.
 | The app bounces and quits | Read `data/logs/app.log`. |
 | `build_app.sh` cannot replace an installed app | Trash the old one in Finder, then rerun it. |
 | The Desktop icon looks generic | Finder caches icons. Log out and back in, or rerun the build script. |
+| The app vanished from the launcher after a macOS update | A major update rebuilds the LaunchServices database and can drop an ad-hoc signed app from it. Rerun `scripts/build_app.sh --apps`, which re-registers it. |
 
 ---
 

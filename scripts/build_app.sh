@@ -113,8 +113,21 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key>       <string>11.0</string>
     <key>NSHighResolutionCapable</key>      <true/>
     <key>LSApplicationCategoryType</key>    <string>public.app-category.reference</string>
-    <!-- The launcher exits immediately, so it must not claim a Dock slot. -->
-    <key>LSUIElement</key>                  <true/>
+    <!--
+      No LSUIElement key here, deliberately.
+
+      Setting it marks the bundle as a background agent. That does stop the
+      launcher claiming a Dock slot for the moment it runs, but an agent is
+      also hidden from the applications launcher and from Spotlight's Apps
+      view, so the icon disappears from where you would go looking for it.
+      macOS 26 replaced Launchpad with that view, which made the effect
+      obvious.
+
+      The Dock slot was never the real problem anyway. What macOS marks as
+      "not responding" is a foreground process that stays alive without an
+      event loop; this launcher exits within a moment and hands the waiting
+      to a detached subshell, so there is nothing left to hang.
+    -->
 </dict>
 </plist>
 PLIST
@@ -149,6 +162,14 @@ install_copy() {
         return 1
     fi
     /usr/bin/touch "$target"
+
+    # Tell LaunchServices about it explicitly. A major OS update rebuilds the
+    # LaunchServices database, and an ad-hoc signed app that nothing has
+    # opened recently can be left out of it — the app is still on disk but
+    # stops appearing in the applications launcher and in Spotlight.
+    local lsregister="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+    [ -x "$lsregister" ] && "$lsregister" -f "$target" 2>/dev/null || true
+
     echo "Installed $target"
 }
 

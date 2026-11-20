@@ -274,6 +274,55 @@ def apply_scores(conn: sqlite3.Connection, scored: Iterable[dict[str, Any]]) -> 
     return len(rows)
 
 
+def delete_before(conn: sqlite3.Connection, cutoff: date) -> int:
+    """Remove papers published before `cutoff`. Returns the number deleted."""
+    cur = conn.execute("DELETE FROM papers WHERE published_on < ?", (cutoff.isoformat(),))
+    return cur.rowcount or 0
+
+
+def count_before(conn: sqlite3.Connection, cutoff: date) -> int:
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM papers WHERE published_on < ?", (cutoff.isoformat(),)
+    ).fetchone()
+    return int(row["n"])
+
+
+def trim_runs(conn: sqlite3.Connection, keep: int) -> int:
+    """Keep only the newest `keep` rows in the run log."""
+    if keep <= 0:
+        return 0
+    cur = conn.execute(
+        "DELETE FROM runs WHERE id NOT IN "
+        "(SELECT id FROM runs ORDER BY id DESC LIMIT ?)",
+        (keep,),
+    )
+    return cur.rowcount or 0
+
+
+def clear_legacy_summaries(conn: sqlite3.Connection) -> int:
+    """Blank the unused summary column.
+
+    Nothing writes or serves it since the card began showing the abstract
+    itself, but databases created earlier still carry the text.
+    """
+    cur = conn.execute("UPDATE papers SET summary = NULL WHERE summary IS NOT NULL")
+    return cur.rowcount or 0
+
+
+def vacuum(path=None) -> None:
+    """Return freed pages to the filesystem.
+
+    VACUUM cannot run inside a transaction, so this takes its own connection
+    in autocommit mode rather than joining an open session.
+    """
+    conn = connect(path)
+    try:
+        conn.isolation_level = None
+        conn.execute("VACUUM")
+    finally:
+        conn.close()
+
+
 def stats(conn: sqlite3.Connection) -> dict[str, Any]:
     total = conn.execute("SELECT COUNT(*) AS n FROM papers").fetchone()["n"]
     by_source = {

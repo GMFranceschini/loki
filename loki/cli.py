@@ -66,6 +66,43 @@ def cmd_rescore(args) -> int:
     return 0
 
 
+def cmd_prune(args) -> int:
+    from .pipeline import prune, trim_logs
+
+    config = load_config()
+    result = prune(config, older_than=args.older_than, dry_run=args.dry_run)
+
+    if result["status"] == "disabled":
+        print(result["detail"])
+        return 0
+
+    if result.get("clamped_to_window_reach"):
+        print(
+            f"Keeping {result['retention_days']} days: that is as short as the "
+            "digest windows allow, so nothing they could still show is deleted."
+        )
+
+    if args.dry_run:
+        print(
+            f"Would delete {result['papers_would_delete']} papers published "
+            f"before {result['cutoff']}."
+        )
+        return 0
+
+    print(
+        f"Deleted {result['papers_deleted']} papers published before "
+        f"{result['cutoff']}, and {result['runs_deleted']} old run records."
+    )
+    if result["legacy_summaries_cleared"]:
+        print(f"Cleared {result['legacy_summaries_cleared']} unused summaries.")
+    if result["vacuumed"]:
+        print("Reclaimed the freed space.")
+    trimmed = trim_logs(config)
+    if trimmed:
+        print(f"Trimmed {trimmed} oversized log file(s).")
+    return 0
+
+
 def cmd_top(args) -> int:
     from .pipeline import digest
 
@@ -333,6 +370,20 @@ def build_parser() -> argparse.ArgumentParser:
         "rescore", help="recompute scores after editing interests.yaml or journals.json"
     )
     p_rescore.set_defaults(func=cmd_rescore)
+
+    p_prune = sub.add_parser(
+        "prune", help="delete stored history older than the digest windows reach"
+    )
+    p_prune.add_argument(
+        "--older-than",
+        type=int,
+        metavar="DAYS",
+        help="override storage.retention_days for this run",
+    )
+    p_prune.add_argument(
+        "--dry-run", action="store_true", help="report what would go, delete nothing"
+    )
+    p_prune.set_defaults(func=cmd_prune)
 
     p_stats = sub.add_parser("stats", help="print database statistics as JSON")
     p_stats.set_defaults(func=cmd_stats)

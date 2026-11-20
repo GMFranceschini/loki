@@ -39,7 +39,7 @@ bin/loki serve      # then open http://127.0.0.1:8713
 |---|---|
 | **Python 3.12** | Pinned in `.python-version`. 3.13 is not supported yet: `pyproject.toml` caps it. |
 | **macOS** | For `Loki.app` and the daily `launchd` schedule. The Python side itself is portable, so `bin/loki fetch` and `bin/loki serve` work on Linux too; only the two shell scripts are Mac-only. |
-| **~500 MB disk** | 30 MB embedding model, plus the SQLite database as it fills. A year of daily fetches lands around 200 MB. |
+| **~150 MB disk** | 30 MB embedding model, plus the SQLite database. Pruning holds it near 50 MB; see [Keeping the database small](#keeping-the-database-small). |
 | **Network** | Only to reach PubMed and bioRxiv. Everything else is local. |
 
 [uv](https://docs.astral.sh/uv/) is optional but recommended; the installer
@@ -163,6 +163,7 @@ bin/loki fetch                  # fetch now (the schedule does this for you)
 bin/loki fetch --backfill 14    # fill in the last two weeks
 bin/loki status                 # is the server running?
 bin/loki stop                   # stop the server
+bin/loki prune                  # drop history older than the digests reach
 bin/loki stats                  # what is stored
 bin/loki doctor                 # health check
 ```
@@ -381,6 +382,53 @@ preprint record is removed so the digest shows one entry, not two.
 
 ---
 
+## Keeping the database small
+
+Loki stores roughly **430 new papers a day**, about 1.8 MB. A digest only ever
+reaches back the month window plus its padding — 39 days with the shipped
+settings — so everything older is kept but never shown again. Left alone the
+database would grow by about **0.7 GB a year** and never shrink.
+
+So a prune runs automatically at the end of every fetch:
+
+- Papers published before the retention cutoff are deleted.
+- The fetch-run log is trimmed to its newest `keep_runs` rows.
+- Log files past `max_log_bytes` are cut back to their most recent half.
+  launchd appends to its log on every scheduled run and never rotates it.
+- The freed pages are returned to the filesystem. SQLite does not shrink a
+  file on its own, so without this the space is reused but never given back.
+
+```yaml
+storage:
+  retention_days: 60      # 0 keeps everything, as Loki did before
+  keep_runs: 200
+  max_log_bytes: 5000000
+  vacuum: true
+```
+
+At 60 days the database settles near **50 MB** instead of growing without
+limit.
+
+> **The retention can never cut into a digest.** Whatever `retention_days`
+> says, the cutoff is clamped to the deepest window reach, so a paper the
+> month list could still show is never deleted. Ask for 5 days and you get 39,
+> and Loki says so. The headroom above that — 21 days by default — is what
+> lets you set the **As of** date back a few weeks and still see full lists.
+
+Run it yourself at any time:
+
+```bash
+bin/loki prune --dry-run           # report what would go, delete nothing
+bin/loki prune                     # prune now
+bin/loki prune --older-than 90     # just this once, keep 90 days
+```
+
+To keep everything forever, set `retention_days: 0`. The file will grow
+indefinitely, which is a reasonable choice if you want the archive and have
+the disk; `bin/loki stats` will tell you how large it has become.
+
+---
+
 ## Tuning it
 
 Everything below is in `config/interests.yaml`.
@@ -497,7 +545,7 @@ third-party or emoji artwork.
 │   ├── build_app.sh          builds Loki.app
 │   ├── make_icon.sh          rebuilds icon.png and loki.icns from icon.svg
 │   └── svg2png.swift         the fallback SVG rasteriser make_icon.sh uses
-└── tests/                    136 tests: bin/loki is not needed, use pytest
+└── tests/                    147 tests: bin/loki is not needed, use pytest
 ```
 
 Your data is just a SQLite file. Query it directly whenever you want:
@@ -528,7 +576,7 @@ sqlite3 data/loki.db \
 .venv/bin/python -m pytest tests/ -q
 ```
 
-136 tests, no network needed: the scoring and tagging tests use the offline
+147 tests, no network needed: the scoring and tagging tests use the offline
 hashing embedder and the API tests run against a temporary database.
 
 ---

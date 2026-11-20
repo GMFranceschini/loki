@@ -131,6 +131,25 @@ sources:
     max_per_run: 3000
 
 # ----------------------------------------------------------------------------
+# Storage
+# ----------------------------------------------------------------------------
+# Loki stores about 430 new papers a day. A digest only ever reaches back the
+# month window plus its padding, so anything older is kept but never shown.
+# Without pruning the database grows by roughly 0.7 GB a year.
+#
+# Pruning runs automatically after each fetch. Whatever retention_days says,
+# a paper a digest could still show is never deleted.
+storage:
+  # Days of history to keep. 0 keeps everything, as Loki did before.
+  retention_days: 60
+  # Rows to keep in the fetch-run log.
+  keep_runs: 200
+  # Log files past this size are trimmed to their most recent half.
+  max_log_bytes: 5000000
+  # Reclaim freed pages afterwards. SQLite does not shrink the file on its own.
+  vacuum: true
+
+# ----------------------------------------------------------------------------
 # Embeddings
 # ----------------------------------------------------------------------------
 embedding:

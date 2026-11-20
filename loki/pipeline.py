@@ -200,6 +200,18 @@ def fetch_and_rescore(
         if progress:
             progress("Background vector changed; rescoring the whole corpus")
         summary["rescored"] = rescore_all(config)
+
+    # Keep the database from growing without limit. A failure here must not
+    # lose the papers the fetch just stored, so it is reported, not raised.
+    try:
+        summary["pruned"] = prune(config)
+        summary["logs_trimmed"] = trim_logs(config)
+        removed = summary["pruned"].get("papers_deleted", 0)
+        if removed and progress:
+            progress(f"Pruned {removed} papers older than the digest windows")
+    except Exception as exc:
+        log.exception("Pruning after a fetch failed")
+        summary["pruned"] = {"status": "error", "detail": str(exc)}
     return summary
 
 
@@ -245,6 +257,110 @@ def rescore_all(config: Config | None = None, scorer: Scorer | None = None) -> i
 
 
 BASE_WINDOW_DAYS = {"day": 1, "week": 7, "month": 30}
+
+
+def minimum_retention_days(config: Config) -> int:
+    """How far back a digest can still reach, in days before the reference.
+
+    Pruning must never go shorter than this, or the month list would start
+    losing papers it is still meant to show.
+    """
+    return max(
+        length - 1 + config.scoring.padding_for(name)
+        for name, length in BASE_WINDOW_DAYS.items()
+    )
+
+
+def prune(
+    config: Config | None = None,
+    older_than: int | None = None,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Drop stored history no digest can reach, and reclaim the space.
+
+    Loki takes in roughly 430 papers a day. Nothing ever removed them, so the
+    database grew without limit while only the last few weeks were reachable.
+
+    `older_than` overrides the configured retention. Either way the cutoff is
+    clamped so a paper a digest could still show is never deleted.
+    """
+    config = config or load_config()
+    requested = config.storage.retention_days if older_than is None else older_than
+
+    if requested <= 0:
+        return {"status": "disabled", "detail": "retention_days is 0; keeping everything"}
+
+    floor = minimum_retention_days(config)
+    retention = max(int(requested), floor)
+    clamped = retention != int(requested)
+    cutoff = today_utc() - timedelta(days=retention)
+
+    with db.session() as conn:
+        doomed = db.count_before(conn, cutoff)
+        if dry_run:
+            return {
+                "status": "dry-run",
+                "cutoff": cutoff.isoformat(),
+                "retention_days": retention,
+                "clamped_to_window_reach": clamped,
+                "papers_would_delete": doomed,
+            }
+        papers = db.delete_before(conn, cutoff)
+        runs = db.trim_runs(conn, config.storage.keep_runs)
+        legacy = db.clear_legacy_summaries(conn)
+
+    reclaimed = papers or legacy
+    if reclaimed and config.storage.vacuum:
+        db.vacuum()
+
+    if papers or runs or legacy:
+        log.info(
+            "Pruned %d papers published before %s, %d old run records%s",
+            papers, cutoff, runs,
+            f", cleared {legacy} legacy summaries" if legacy else "",
+        )
+    return {
+        "status": "ok",
+        "cutoff": cutoff.isoformat(),
+        "retention_days": retention,
+        "clamped_to_window_reach": clamped,
+        "papers_deleted": papers,
+        "runs_deleted": runs,
+        "legacy_summaries_cleared": legacy,
+        "vacuumed": bool(reclaimed and config.storage.vacuum),
+    }
+
+
+def trim_logs(config: Config | None = None) -> int:
+    """Halve any log file that has grown past its cap. Returns files trimmed.
+
+    launchd appends to its log for every scheduled run and never rotates, so
+    this keeps the tail rather than letting the file grow without limit.
+    """
+    from .paths import LOG_DIR
+
+    config = config or load_config()
+    cap = config.storage.max_log_bytes
+    if cap <= 0 or not LOG_DIR.exists():
+        return 0
+
+    trimmed = 0
+    for path in LOG_DIR.glob("*.log"):
+        try:
+            if path.stat().st_size <= cap:
+                continue
+            with path.open("rb") as handle:
+                handle.seek(-cap // 2, 2)
+                handle.readline()          # drop the partial line
+                tail = handle.read()
+            path.write_bytes(
+                b"[earlier entries trimmed to keep this log under "
+                + str(cap).encode() + b" bytes]\n" + tail
+            )
+            trimmed += 1
+        except OSError as exc:
+            log.warning("Could not trim %s: %s", path, exc)
+    return trimmed
 
 
 def windows(

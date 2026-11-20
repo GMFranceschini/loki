@@ -96,6 +96,31 @@ class BioRxivConfig:
 
 
 @dataclass(frozen=True)
+class StorageConfig:
+    """How much history to keep on disk.
+
+    A digest can only ever reach back `month` plus its padding, so papers
+    older than that are stored but never shown again. Without pruning the
+    database grows without limit: about 430 papers a day, near 0.7 GB a year.
+    """
+
+    # Days of history to keep. 0 keeps everything, as Loki did before.
+    # Whatever is set here, pruning never deletes a paper a digest could
+    # still show; see pipeline.minimum_retention_days.
+    retention_days: int = 60
+
+    # Rows to keep in the fetch-run log.
+    keep_runs: int = 200
+
+    # Log files larger than this are trimmed to their most recent half.
+    max_log_bytes: int = 5_000_000
+
+    # Reclaim the freed pages afterwards. SQLite does not shrink the file on
+    # its own: without this the space is reused but never returned.
+    vacuum: bool = True
+
+
+@dataclass(frozen=True)
 class EmbeddingConfig:
     backend: str = "model2vec"
     model: str = "minishlab/potion-base-8M"
@@ -108,6 +133,7 @@ class Config:
     pubmed: PubMedConfig = field(default_factory=PubMedConfig)
     biorxiv: BioRxivConfig = field(default_factory=BioRxivConfig)
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
+    storage: StorageConfig = field(default_factory=StorageConfig)
 
     @property
     def topic_names(self) -> list[str]:
@@ -257,6 +283,7 @@ def load_config(path=None) -> Config:
         pubmed=_build(PubMedConfig, _subdict(raw, "sources", "pubmed")),
         biorxiv=_build(BioRxivConfig, _subdict(raw, "sources", "biorxiv")),
         embedding=_build(EmbeddingConfig, _subdict(raw, "embedding")),
+        storage=_build(StorageConfig, _subdict(raw, "storage")),
     )
 
 

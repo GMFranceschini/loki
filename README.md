@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.png" alt="Loki — a local literature radar for biological research" width="880">
+</p>
+
 # Loki
 
 A local literature radar for biological research. It fetches new papers every
@@ -651,8 +655,8 @@ The embedding model, `minishlab/potion-base-8M`, is downloaded from Hugging Face
 at first use under its own licence. It is not redistributed here.
 
 All Python dependencies are MIT or BSD licensed. The icon in `assets/icon.svg`
-was drawn for this project: it is a plain geometric hypercube, and contains no
-third-party or emoji artwork.
+and the banner in `assets/banner.svg` were drawn for this project: plain
+geometric shapes, containing no third-party, stock or emoji artwork.
 
 ---
 
@@ -662,8 +666,9 @@ third-party or emoji artwork.
 ~/Loki/
 ├── Loki.app                  double-clickable launcher (generated; removed
 │                             once you install a copy, so only one bundle exists)
-├── assets/                   app icon artwork
+├── assets/                   icon and banner artwork
 ├── assets/icon.svg           the app icon; everything else is generated from it
+├── assets/banner.svg         the README banner; banner.png is rendered from it
 ├── bin/loki                  the command you run
 ├── config/
 │   ├── interests.yaml        your topics and all scoring settings

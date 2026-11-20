@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" width="1200" height="280" role="img" aria-label="Loki — a local literature radar for biological research">
+  <title>Loki</title>
+  <desc>The Loki tesseract beside a star chart: field stars, an asterism and a dashed horizon.</desc>
+
+  <!--
+    README banner. Source of truth for assets/banner.png, which is what the
+    README actually shows: a PNG needs no font to be installed, while the text
+    here would be drawn in whatever the renderer happens to have.
+
+    Rebuild the PNG after editing this file:
+
+      rsvg-convert -w 2400 assets/banner.svg -o assets/banner.png
+      # or
+      inkscape assets/banner.svg --export-type=png \
+               --export-filename=assets/banner.png --export-width=2400
+
+    Flat shapes only — no gradients, no blur filters, no embedded fonts — for
+    the same reason as assets/icon.svg: every renderer then draws it the same.
+    The mark is that icon's geometry without its plate, and the palette is the
+    icon's. The asterism is an open path with one branch and no crossings: a
+    line cutting across its own path reads as a mistake at any size.
+  -->
+
+  <rect width="1200" height="280" rx="26" fill="#2A1142"/>
+  <path d="M 648 252 C 790 232 930 190 1060 126 C 1110 100 1150 82 1182 72" fill="none" stroke="#8E5BC4" stroke-width="1.6" stroke-dasharray="6 8" opacity="0.7"/>
+  <g transform="translate(664,36) scale(1.18)">
+    <g stroke="#8E5BC4" stroke-width="2.2" stroke-linecap="round" fill="none">
+      <line x1="8" y1="152" x2="68" y2="118"/>
+      <line x1="68" y1="118" x2="134" y2="134"/>
+      <line x1="134" y1="134" x2="198" y2="90"/>
+      <line x1="198" y1="90" x2="262" y2="104"/>
+      <line x1="262" y1="104" x2="322" y2="54"/>
+      <line x1="322" y1="54" x2="384" y2="80"/>
+      <line x1="262" y1="104" x2="288" y2="164"/>
+    </g>
+    <g fill="#6B4A8F">
+      <circle cx="30" cy="30" r="2"/>
+      <circle cx="104" cy="176" r="2"/>
+      <circle cx="168" cy="18" r="3"/>
+      <circle cx="232" cy="150" r="2"/>
+      <circle cx="352" cy="148" r="2"/>
+      <circle cx="390" cy="20" r="2"/>
+      <circle cx="60" cy="70" r="2"/>
+      <circle cx="246" cy="28" r="2"/>
+      <circle cx="316" cy="122" r="2"/>
+      <circle cx="130" cy="58" r="2"/>
+    </g>
+    <g fill="#FFD166">
+      <circle cx="8" cy="152" r="2.5"/>
+      <circle cx="68" cy="118" r="3.5"/>
+      <circle cx="134" cy="134" r="2.0"/>
+      <circle cx="198" cy="90" r="3.0"/>
+      <circle cx="262" cy="104" r="2.0"/>
+      <circle cx="322" cy="54" r="4.5"/>
+      <circle cx="384" cy="80" r="2.5"/>
+      <circle cx="288" cy="164" r="1.5"/>
+    </g>
+    <g stroke="#FFD166" stroke-width="1.6" stroke-linecap="round"><line x1="308" y1="54" x2="336" y2="54"/><line x1="322" y1="40" x2="322" y2="68"/></g>
+  </g>
+  <g fill="#6B4A8F"><circle cx="118" cy="44" r="2"/><circle cx="212" cy="236" r="2.5"/><circle cx="60" cy="244" r="2"/><circle cx="470" cy="40" r="2"/><circle cx="566" cy="232" r="2.5"/></g>
+  <g transform="translate(48,48) scale(0.17578)">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="24">
+      <g stroke="#8E5BC4">
+        <line x1="196" y1="196" x2="416" y2="340"/>
+        <line x1="828" y1="196" x2="716" y2="340"/>
+        <line x1="828" y1="828" x2="716" y2="630"/>
+        <line x1="196" y1="828" x2="416" y2="630"/>
+      </g>
+      <rect x="196" y="196" width="632" height="632" stroke="#F0E4FF"/>
+      <rect x="416" y="340" width="300" height="290" stroke="#C77DFF"/>
+    </g>
+    <g fill="#FFD166">
+      <circle cx="196" cy="196" r="34"/><circle cx="828" cy="196" r="34"/>
+      <circle cx="828" cy="828" r="34"/><circle cx="196" cy="828" r="34"/>
+      <circle cx="416" cy="340" r="30"/><circle cx="716" cy="340" r="30"/>
+      <circle cx="716" cy="630" r="30"/><circle cx="416" cy="630" r="30"/>
+    </g>
+  </g>
+  <text x="268" y="142" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="72" font-weight="700" letter-spacing="1.5" fill="#F0E4FF" text-anchor="start">Loki</text>
+  <text x="268" y="180" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="21" font-weight="400" fill="#C9A9E8" text-anchor="start">A local literature radar for biological research</text>
+</svg>

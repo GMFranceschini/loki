@@ -18,6 +18,7 @@ from xml.etree import ElementTree as ET
 import httpx
 
 from ..config import PubMedConfig, Topic
+from .authors import trim_authors
 from .http import RateLimiter, get_with_retry
 
 log = logging.getLogger(__name__)
@@ -117,11 +118,10 @@ def _abstract(article: ET.Element) -> str:
     return " ".join(parts)
 
 
-def _authors(article: ET.Element, limit: int = 25) -> list[str]:
+def _authors(article: ET.Element) -> list[str]:
+    """Every author on the record, in order. trim_authors decides what is kept."""
     names: list[str] = []
     for author in article.findall("AuthorList/Author"):
-        if len(names) >= limit:
-            break
         collective = _text(author.find("CollectiveName"))
         if collective:
             names.append(collective)
@@ -187,6 +187,8 @@ def parse_article(pubmed_article: ET.Element) -> dict[str, Any] | None:
     if not discovery:
         return None
 
+    kept_authors, author_count = trim_authors(_authors(article))
+
     return {
         "source": SOURCE,
         "ext_id": pmid,
@@ -196,7 +198,8 @@ def parse_article(pubmed_article: ET.Element) -> dict[str, Any] | None:
         "journal": _text(journal.find("Title")) if journal is not None else None,
         "journal_abbrev": _text(journal.find("ISOAbbreviation")) if journal is not None else None,
         "issn": _text(journal.find("ISSN")) if journal is not None else None,
-        "authors": _authors(article),
+        "authors": kept_authors,
+        "author_count": author_count,
         "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
         "is_preprint": False,
         "published_on": discovery,

@@ -170,3 +170,51 @@ def test_preprints_carry_no_journal():
 )
 def test_malformed_preprints_are_dropped(broken):
     assert parse_preprint(broken, "biorxiv") is None
+
+
+# ----------------------------------------------------- long author lists
+
+
+def _article_with(n_authors: int) -> ET.Element:
+    """The fixture article, but with a long author list."""
+    root = ET.fromstring(ARTICLE_XML)
+    author_list = root.find("MedlineCitation/Article/AuthorList")
+    for author in list(author_list):
+        author_list.remove(author)
+    for i in range(n_authors):
+        author = ET.SubElement(author_list, "Author")
+        ET.SubElement(author, "LastName").text = f"Author{i:03d}"
+        ET.SubElement(author, "Initials").text = "X"
+    return root
+
+
+def test_a_short_author_list_is_kept_whole():
+    parsed = parse_article(_article_with(5))
+    assert len(parsed["authors"]) == 5
+    assert parsed["author_count"] == 5
+
+
+def test_a_long_author_list_keeps_the_last_author():
+    # The senior author is the last name on a biology paper, so a plain
+    # truncation would drop the most informative one.
+    parsed = parse_article(_article_with(300))
+    assert parsed["authors"][0] == "Author000 X"
+    assert parsed["authors"][-1] == "Author299 X"
+    assert len(parsed["authors"]) == 25
+    assert parsed["author_count"] == 300
+
+
+def test_the_middle_of_a_long_author_list_is_what_goes():
+    parsed = parse_article(_article_with(300))
+    assert parsed["authors"][23] == "Author023 X"
+    assert "Author024 X" not in parsed["authors"]
+
+
+def test_preprint_author_lists_are_trimmed_the_same_way():
+    item = dict(PREPRINT)
+    item["authors"] = "; ".join(f"Author{i:03d}, X." for i in range(60))
+    record = parse_preprint(item, "biorxiv")
+    assert record["authors"][0] == "Author000, X."
+    assert record["authors"][-1] == "Author059, X."
+    assert len(record["authors"]) == 25
+    assert record["author_count"] == 60

@@ -15,6 +15,7 @@ from typing import Any, Iterable
 import httpx
 
 from ..config import BioRxivConfig
+from .authors import trim_authors
 from .http import RateLimiter, get_with_retry
 
 log = logging.getLogger(__name__)
@@ -41,10 +42,9 @@ def _iso_date(value: Any) -> str | None:
         return None
 
 
-def _split_authors(raw: Any, limit: int = 25) -> list[str]:
+def _split_authors(raw: Any) -> list[str]:
     """The API returns one semicolon-delimited string of authors."""
-    parts = [p.strip() for p in _clean(raw).split(";") if p.strip()]
-    return parts[:limit]
+    return [p.strip() for p in _clean(raw).split(";") if p.strip()]
 
 
 def parse_preprint(item: dict[str, Any], server: str) -> dict[str, Any] | None:
@@ -55,6 +55,7 @@ def parse_preprint(item: dict[str, Any], server: str) -> dict[str, Any] | None:
         return None
 
     version = _clean(item.get("version"))
+    kept_authors, author_count = trim_authors(_split_authors(item.get("authors")))
     return {
         "source": server,
         "ext_id": doi,
@@ -66,7 +67,8 @@ def parse_preprint(item: dict[str, Any], server: str) -> dict[str, Any] | None:
         "journal": None,
         "journal_abbrev": None,
         "issn": None,
-        "authors": _split_authors(item.get("authors")),
+        "authors": kept_authors,
+        "author_count": author_count,
         "url": f"https://www.{server}.org/content/{doi}v{version or '1'}",
         "is_preprint": True,
         "published_on": posted,

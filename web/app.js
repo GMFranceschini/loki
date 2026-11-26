@@ -84,10 +84,15 @@ function showBanner(message, isError = false) {
   el.banner.hidden = !message;
 }
 
-function formatAuthors(authors) {
+/* First two authors and the last one, which in biology is the group leader.
+   The total comes from the database rather than from the stored list, because
+   long author lists are trimmed on the way in. */
+function formatAuthors(authors, total) {
   if (!Array.isArray(authors) || authors.length === 0) return "";
-  if (authors.length <= 3) return authors.join(", ");
-  return `${authors[0]}, ${authors[1]} … ${authors[authors.length - 1]} (+${authors.length - 3} more)`;
+  const count = Number.isInteger(total) && total >= authors.length ? total : authors.length;
+  if (count <= 3) return authors.join(", ");
+  const last = authors[authors.length - 1];
+  return `${authors[0]}, ${authors[1]} … ${last} (+${count - 3} more)`;
 }
 
 function formatDate(iso) {
@@ -158,7 +163,7 @@ function renderPaper(paper, rank) {
         <span>${escapeHTML(formatDate(paper.published_on))}</span>
         ${badges.join("")}
       </div>
-      ${paper.authors && paper.authors.length ? `<p class="authors">${escapeHTML(formatAuthors(paper.authors))}</p>` : ""}
+      ${paper.authors && paper.authors.length ? `<p class="authors">${escapeHTML(formatAuthors(paper.authors, paper.author_count))}</p>` : ""}
       <div class="scorebar">
         <span class="score-total">${score}</span>
         <div class="bars">

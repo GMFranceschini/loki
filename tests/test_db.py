@@ -189,3 +189,28 @@ def test_apply_scores_updates_rows(conn):
     row = conn.execute("SELECT score, scored_with FROM papers").fetchone()
     assert row["score"] == 0.13
     assert row["scored_with"] == "fp2"
+
+
+def test_author_count_survives_a_round_trip(conn):
+    db.upsert_papers(conn, [{
+        "source": "pubmed", "ext_id": "crowd", "title": "A large collaboration",
+        "authors": ["First A", "Second B", "Senior Z"], "author_count": 412,
+        "is_preprint": False, "published_on": "2026-11-20", "pub_date": "2026-11-20",
+        "relevance": 0.5, "impact": 0.5, "score": 0.5, "scored_with": "x",
+        "tags": [], "topic_scores": {},
+    }])
+    paper = db.top_papers(conn, date(2026, 11, 1), date(2026, 11, 30), limit=1)[0]
+    assert paper["author_count"] == 412
+    assert paper["authors"][-1] == "Senior Z"
+
+
+def test_a_paper_stored_before_the_column_existed_reads_back_as_none(conn):
+    db.upsert_papers(conn, [{
+        "source": "pubmed", "ext_id": "legacy", "title": "Older row",
+        "authors": ["Only A"], "is_preprint": False,
+        "published_on": "2026-11-20", "pub_date": "2026-11-20",
+        "relevance": 0.5, "impact": 0.5, "score": 0.5, "scored_with": "x",
+        "tags": [], "topic_scores": {},
+    }])
+    paper = db.top_papers(conn, date(2026, 11, 1), date(2026, 11, 30), limit=1)[0]
+    assert paper["author_count"] is None

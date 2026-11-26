@@ -79,13 +79,13 @@ PAPER_COLUMNS = (
     "id, source, ext_id, doi, title, abstract, journal, journal_abbrev, issn, "
     "authors, url, is_preprint, published_on, pub_date, first_seen_at, "
     "relevance, impact, impact_factor, score, top_topic, tags, topic_scores, "
-    "saved_at"
+    "saved_at, author_count"
 )
 
 # Columns added after the first release. A database created by an earlier
 # version has the table already, so CREATE TABLE IF NOT EXISTS skips it and
 # the new column never appears. Each is added on open instead.
-ADDED_COLUMNS = (("saved_at", "TEXT"),)
+ADDED_COLUMNS = (("saved_at", "TEXT"), ("author_count", "INTEGER"))
 
 # Indexes on those columns, which therefore cannot be part of SCHEMA: it runs
 # before the columns are added, and indexing one that is not there yet fails.
@@ -249,14 +249,14 @@ def upsert_papers(conn: sqlite3.Connection, records: Iterable[dict[str, Any]]) -
     sql_insert = """
         INSERT INTO papers (
             source, ext_id, doi, title, abstract, journal, journal_abbrev, issn,
-            authors, url, is_preprint, published_on, pub_date, first_seen_at,
-            relevance, impact, impact_factor, score, top_topic, tags,
-            topic_scores, scored_with
+            authors, author_count, url, is_preprint, published_on, pub_date,
+            first_seen_at, relevance, impact, impact_factor, score, top_topic,
+            tags, topic_scores, scored_with
         ) VALUES (
             :source, :ext_id, :doi, :title, :abstract, :journal, :journal_abbrev,
-            :issn, :authors, :url, :is_preprint, :published_on, :pub_date,
-            :first_seen_at, :relevance, :impact, :impact_factor, :score,
-            :top_topic, :tags, :topic_scores, :scored_with
+            :issn, :authors, :author_count, :url, :is_preprint, :published_on,
+            :pub_date, :first_seen_at, :relevance, :impact, :impact_factor,
+            :score, :top_topic, :tags, :topic_scores, :scored_with
         )
         ON CONFLICT (source, ext_id) DO UPDATE SET
             doi           = COALESCE(excluded.doi, papers.doi),
@@ -266,6 +266,7 @@ def upsert_papers(conn: sqlite3.Connection, records: Iterable[dict[str, Any]]) -
             journal_abbrev = COALESCE(excluded.journal_abbrev, papers.journal_abbrev),
             issn          = COALESCE(excluded.issn, papers.issn),
             authors       = excluded.authors,
+            author_count  = COALESCE(excluded.author_count, papers.author_count),
             url           = COALESCE(excluded.url, papers.url),
             published_on  = MIN(papers.published_on, excluded.published_on),
             pub_date      = COALESCE(excluded.pub_date, papers.pub_date),
@@ -283,7 +284,8 @@ def upsert_papers(conn: sqlite3.Connection, records: Iterable[dict[str, Any]]) -
         row = dict(rec)
         row.setdefault("first_seen_at", now)
         for optional in ("doi", "abstract", "journal", "journal_abbrev", "issn",
-                         "url", "pub_date", "impact_factor", "top_topic"):
+                         "url", "pub_date", "impact_factor", "top_topic",
+                         "author_count"):
             row.setdefault(optional, None)
         if isinstance(row.get("authors"), (list, tuple)):
             row["authors"] = json.dumps(list(row["authors"]))
